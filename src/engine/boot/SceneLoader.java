@@ -1,8 +1,8 @@
 package engine.boot;
 
-import engine.Entity;
-import engine.Entity.EntityType;
 import engine.Scene;
+import engine.Entity.Entity;
+import engine.Entity.Entity.EntityType;
 
 import java.io.File;
 import java.io.IOException;

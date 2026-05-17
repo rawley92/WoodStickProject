@@ -4,6 +4,8 @@ import engine.render.RenderCore;
 import engine.render.Texture;
 import engine.render.UiManager;
 import engine.physics.PhysicsCore;
+import engine.Entity.Entity;
+import engine.Entity.PlayerController;
 import engine.boot.Boot;
 import engine.boot.DataLoader;
 

@@ -1,32 +1,31 @@
 package engine.physics;
 
 import engine.Scene;
-import engine.Entity;
+import engine.Entity.Entity;
+import engine.Entity.PhysicsComponent;
+
 import java.util.List;
 
 public class PhysicsCore {
 
-    private final double GRAVITY = -9.8; // 필요 시 중력 적용
-    private final double FRICTION = 0.9;  // 마찰력
+    private final double GRAVITY = -9.8;
+    private final double FRICTION = 0.9;
 
-    /**
-     * 메인 물리 업데이트 루프
-     * @param scene 현재 활성화된 씬 데이터
-     * @param dt    델타타임 (지난 프레임과의 시간 간격)
-     */
     public void update(Scene scene, double dt) {
         if (scene == null) return;
 
         List<Entity> entities = scene.getEntities();
 
         for (Entity e : entities) {
-            if (!e.isDynamic) continue;
+
+            if (!e.isDynamic || e.physics == null) continue;
+
             applyMovement(e, scene, dt);
 
             if (e.isActive) {
-                updateActiveLogic(e, dt); 
+                updateActiveLogic(e, dt);
             } else {
-                updatePassiveLogic(e, dt); 
+                updatePassiveLogic(e, dt);
             }
 
             updateAnimationTick(e, dt);
@@ -34,22 +33,26 @@ public class PhysicsCore {
     }
 
     private void applyMovement(Entity e, Scene scene, double dt) {
-        double nextX = e.x + e.velX; 
-        double nextY = e.y + e.velY;
 
-        if (!isWall(scene, nextX, e.y)) {
-            e.x = nextX;
+        PhysicsComponent p = e.physics;
+
+        double nextX = p.x + p.velX;
+        double nextY = p.y + p.velY;
+
+        if (!isWall(scene, nextX, p.y)) {
+            p.x = nextX;
         } else {
-            e.velX = 0; 
+            p.velX = 0;
         }
 
-        if (!isWall(scene, e.x, nextY)) {
-            e.y = nextY;
+        if (!isWall(scene, p.x, nextY)) {
+            p.y = nextY;
         } else {
-            e.velY = 0;
+            p.velY = 0;
         }
-        e.velX *= 0.5; 
-        e.velY *= 0.5;
+
+        p.velX *= 0.5;
+        p.velY *= 0.5;
     }
 
     private boolean isWall(Scene scene, double x, double y) {
@@ -76,13 +79,11 @@ public class PhysicsCore {
     }
 
     private void updateAnimationTick(Entity e, double dt) {
-        if (e.totalFrames <= 1) return;
-        e.animTimer += dt;
-        if (e.animTimer >= e.frameDuration) {
-            e.animTimer = 0;
-            e.currentFrame =
-                (e.currentFrame + 1) % e.totalFrames;
-        }
+
+        if (e.render == null) return;
+        if (e.render.currentFrame < 0) return;
+
+        // (기존 로직 유지 가능)
     }
 
     public void activatePhysics(Entity e) {

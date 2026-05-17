@@ -1,7 +1,9 @@
 package engine.render;
 
 import engine.Scene;
-import engine.Entity;
+import engine.Entity.CameraComponent;
+import engine.Entity.Entity;
+import engine.Entity.PhysicsComponent;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
@@ -39,10 +41,11 @@ public class RenderCore {
     }
 
     public void render(Scene scene, UiManager uiManager) {
+
         clear();
 
         Entity player = scene.getPlayer();
-        if (player == null) return;
+        if (player == null || player.physics == null) return;
 
         for (int x = 0; x < width; x++) zBuffer[x] = Double.MAX_VALUE;
 
@@ -54,7 +57,6 @@ public class RenderCore {
             renderUiOverlay(uiManager);
         }
     }
-
     private void clear() {
         Arrays.fill(pixels, 0xFF000000);
     }
@@ -91,14 +93,19 @@ public class RenderCore {
         }
     }
     private void renderFloorAndCeiling(Entity player) {
-        double rayDirX0 = player.dirX - player.planeX;
-        double rayDirY0 = player.dirY - player.planeY;
-        double rayDirX1 = player.dirX + player.planeX;
-        double rayDirY1 = player.dirY + player.planeY;
+
+        PhysicsComponent phys = player.physics;
+        CameraComponent cam = player.camera;
+
+        double rayDirX0 = cam.dirX - cam.planeX;
+        double rayDirY0 = cam.dirY - cam.planeY;
+        double rayDirX1 = cam.dirX + cam.planeX;
+        double rayDirY1 = cam.dirY + cam.planeY;
 
         int halfHeight = height / 2;
 
         for (int y = halfHeight; y < height; y++) {
+
             double p = y - halfHeight;
             double posZ = 0.5 * height;
             double rowDistance = posZ / p;
@@ -106,14 +113,17 @@ public class RenderCore {
             double stepX = rowDistance * (rayDirX1 - rayDirX0) / width;
             double stepY = rowDistance * (rayDirY1 - rayDirY0) / width;
 
-            double floorX = player.x + rowDistance * rayDirX0;
-            double floorY = player.y + rowDistance * rayDirY0;
+            double floorX = phys.x + rowDistance * rayDirX0;
+            double floorY = phys.y + rowDistance * rayDirY0;
 
             for (int x = 0; x < width; x++) {
+
                 int cellX = (int) floorX;
                 int cellY = (int) floorY;
 
-                boolean grid = (Math.abs(floorX - cellX) < 0.03) || (Math.abs(floorY - cellY) < 0.03);
+                boolean grid =
+                    (Math.abs(floorX - cellX) < 0.03) ||
+                    (Math.abs(floorY - cellY) < 0.03);
 
                 int floorColor = grid ? 0xFF555555 : 0xFF444444;
                 int ceilingColor = grid ? 0xFF333333 : 0xFF222222;
@@ -128,14 +138,17 @@ public class RenderCore {
     }
 
     private void renderWalls(Scene scene, Entity player) {
-        double posX = player.x;
-        double posY = player.y;
+        PhysicsComponent phys = player.physics;
+        CameraComponent cam = player.camera;
 
-        double dirX = player.dirX;
-        double dirY = player.dirY;
+        double posX = phys.x;
+        double posY = phys.y;
 
-        double planeX = player.planeX;
-        double planeY = player.planeY;
+        double dirX = cam.dirX;
+        double dirY = cam.dirY;
+
+        double planeX = cam.planeX;
+        double planeY = cam.planeY;
 
         for (int x = 0; x < width; x++) {
             double cameraX = 2.0 * x / width - 1.0;

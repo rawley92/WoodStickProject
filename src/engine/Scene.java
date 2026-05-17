@@ -3,6 +3,8 @@ package engine;
 import java.util.ArrayList;
 import java.util.List;
 
+import engine.Entity.Entity;
+
 public class Scene {
 
     private String name;

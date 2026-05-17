@@ -3,6 +3,8 @@ package engine;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.*;
+
+import engine.Entity.Entity;
 import engine.boot.Boot;
 import engine.render.Texture;
 import engine.render.UiManager;
@@ -94,8 +96,9 @@ public class ScriptEngine {
         engineLib.set("spawnEntity", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
+
                 String typeStr = args.checkjstring(1);
-                String assetName = args.checkjstring(2); 
+                String assetName = args.checkjstring(2);
                 double x = args.checkdouble(3);
                 double y = args.checkdouble(4);
                 String scriptName = args.optjstring(5, "default");
@@ -113,22 +116,14 @@ public class ScriptEngine {
                     preloadScript(scriptName);
                 }
 
-                if (entity.type == Entity.EntityType.PLAYER) {
-                    currentScene.setPlayer(entity);
-                } else {
-                    currentScene.addEntity(entity);
-                }
-                System.out.println(
-                    "[ENTITY SPAWN] "
-                    + assetName
-                    + " @ "
-                    + x
-                    + ", "
-                    + y
-                );
+                currentScene.addEntity(entity);
+
+                System.out.println("[ENTITY SPAWN] " + assetName + " @ " + x + ", " + y);
+
                 return LuaValue.NIL;
             }
         });
+
         engineLib.set("setUiVisible", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
@@ -155,12 +150,13 @@ public class ScriptEngine {
                 Scene currentScene = boot.getCurrentScene();
                 if (currentScene != null && currentScene.getPlayer() != null) {
                     Entity player = currentScene.getPlayer();
-                    player.x = x;
-                    player.y = y;
-                    player.dirX = dirX;
-                    player.dirY = dirY;
-                    player.planeX = planeX;
-                    player.planeY = planeY;
+                    player.physics.x = x;
+                    player.physics.y = y;
+
+                    player.camera.dirX = dirX;
+                    player.camera.dirY = dirY;
+                    player.camera.planeX = planeX;
+                    player.camera.planeY = planeY;
                     System.out.println("[Script Bridge] 플레이어 물리 및 카메라 벡터 초기화 완료.");
                 }
                 return LuaValue.NIL;
