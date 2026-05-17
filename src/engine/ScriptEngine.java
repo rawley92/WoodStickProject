@@ -5,20 +5,27 @@ import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.*;
 import engine.boot.Boot;
 import engine.render.Texture;
+import engine.render.UiManager;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ScriptEngine {
 
     private Globals globals;
     private Boot boot;
     private Texture textureCore;
-    private LuaValue cachedUpdateFunc = LuaValue.NIL;
+    private UiManager uiManager; 
 
-    public ScriptEngine(Boot boot, Texture textureCore) {
+    private final Map<String, LuaValue> scriptCache = new HashMap<>();
+
+    public ScriptEngine(Boot boot, Texture textureCore, UiManager uiManager) {
         this.boot = boot;
         this.textureCore = textureCore;
+        this.uiManager = uiManager;
         this.globals = JsePlatform.standardGlobals();
 
         exposeEngineAPI();
@@ -28,11 +35,6 @@ public class ScriptEngine {
         LuaValue engineLib = LuaValue.tableOf();
         globals.set("engine", engineLib);
 
-        // ==========================================
-        // 1. SCENE / MAP INITIALIZATION API
-        // ==========================================
-        
-        // engine.initScene("Level1", "Data/Level/Level1/map.dat")
         engineLib.set("initScene", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
@@ -54,7 +56,6 @@ public class ScriptEngine {
 
                     Scene scene = new Scene(sceneName, map);
                     
-                    // 기본 플레이어 레이아웃 기본값 배치
                     Entity player = new Entity("player", "player", 3.5, 3.5);
                     player.type = Entity.EntityType.PLAYER;
                     player.isDynamic = true;
@@ -70,37 +71,31 @@ public class ScriptEngine {
             }
         });
 
-        // ==========================================
-        // 2. TEXTURE TO WALL ALLOCATION API (핵심 수정 변경점)
-        // ==========================================
-        
-        // engine.assignWallTexture(int mapCode, String textureAssetName)
-        // 예: engine.assignWallTexture(1, "brick_red") -> map.dat의 1번 벽은 프리로드된 brick_red 텍스처를 맵핑한다.
         engineLib.set("assignWallTexture", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
+
                 int mapCode = args.checkint(1);
                 String textureName = args.checkjstring(2);
 
-                // DataLoader에 의해 TextureCore에 이미 로드된 에셋 텍스처를 검색합니다.
-                // 텍스처 코어 설계에 따라 오버로딩 메서드나 이름 매핑 바인딩 테이블을 거치게 처리합니다.
-                // 예시: textureCore.bindMapCodeToAsset(mapCode, textureName);
-                
-                System.out.println("[Lua Link] 맵 타일 정의: [값 " + mapCode + "] ➡️ [텍스처: " + textureName + "]");
+                textureCore.bindIntIdToStringId(mapCode, textureName);
+
+                System.out.println(
+                    "[Lua Link] 맵 타일 정의: [값 "
+                    + mapCode
+                    + "] [텍스처: "
+                    + textureName
+                    + "]"
+                );
                 return LuaValue.NIL;
             }
         });
 
-        // ==========================================
-        // 3. ENTITY SPAWN API
-        // ==========================================
-        
-        // engine.spawnEntity("NPC", "npc_guard", 5.5, 5.5, "guard_patrol")
         engineLib.set("spawnEntity", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
                 String typeStr = args.checkjstring(1);
-                String assetName = args.checkjstring(2); // 파일 경로가 아닌 프리로드된 캐릭터 자산 이름
+                String assetName = args.checkjstring(2); 
                 double x = args.checkdouble(3);
                 double y = args.checkdouble(4);
                 String scriptName = args.optjstring(5, "default");
@@ -114,36 +109,103 @@ public class ScriptEngine {
                 entity.isDynamic = true;
                 entity.isActive = true;
 
+                if (!scriptName.equals("default")) {
+                    preloadScript(scriptName);
+                }
+
                 if (entity.type == Entity.EntityType.PLAYER) {
                     currentScene.setPlayer(entity);
                 } else {
                     currentScene.addEntity(entity);
+                }
+                System.out.println(
+                    "[ENTITY SPAWN] "
+                    + assetName
+                    + " @ "
+                    + x
+                    + ", "
+                    + y
+                );
+                return LuaValue.NIL;
+            }
+        });
+        engineLib.set("setUiVisible", new VarArgFunction() {
+            @Override
+            public Varargs invoke(Varargs args) {
+                String uiName = args.checkjstring(1);
+                boolean visible = args.checkboolean(2);
+
+                if (uiManager != null) {
+                    uiManager.setVisible(uiName, visible);
+                }
+                return LuaValue.NIL;
+            }
+        });
+
+        engineLib.set("setupPlayer", new VarArgFunction() {
+            @Override
+            public Varargs invoke(Varargs args) {
+                double x = args.checkdouble(1);
+                double y = args.checkdouble(2);
+                double dirX = args.checkdouble(3);
+                double dirY = args.checkdouble(4);
+                double planeX = args.checkdouble(5);
+                double planeY = args.checkdouble(6);
+
+                Scene currentScene = boot.getCurrentScene();
+                if (currentScene != null && currentScene.getPlayer() != null) {
+                    Entity player = currentScene.getPlayer();
+                    player.x = x;
+                    player.y = y;
+                    player.dirX = dirX;
+                    player.dirY = dirY;
+                    player.planeX = planeX;
+                    player.planeY = planeY;
+                    System.out.println("[Script Bridge] 플레이어 물리 및 카메라 벡터 초기화 완료.");
                 }
                 return LuaValue.NIL;
             }
         });
     }
 
+    public void preloadScript(String scriptName) {
+        if (scriptCache.containsKey(scriptName)) return;
+
+        String path = "Data/Script/" + scriptName + ".lua";
+        try {
+            LuaValue chunk = globals.loadfile(path);
+            chunk.call(); 
+            scriptCache.put(scriptName, chunk);
+        } catch (Exception e) {
+            System.err.println("[Lua Error] 스크립트 프리로드 실패: " + path);
+        }
+    }
+
     public void runScript(String scriptName) {
         String path = "Data/Script/" + scriptName + ".lua";
         try {
             globals.loadfile(path).call();
-            cachedUpdateFunc = globals.get("onEntityUpdate");
         } catch (Exception e) {
-            System.err.println("[Lua Error] 스크립트 실행 실패: " + path);
+            System.err.println("[Lua Error] 전역 스크립트 실행 실패: " + path);
         }
     }
 
     public void updateEntity(Entity entity, double deltaTime, Entity player) {
-        if (!entity.isActive || cachedUpdateFunc.isnil()) return;
+        if (!entity.isActive || entity.scriptName == null || entity.scriptName.equals("default")) return;
+
+        String funcName = "update_" + entity.scriptName;
+        LuaValue updateFunc = globals.get(funcName);
+
+        if (updateFunc.isnil()) return;
+
         try {
-            cachedUpdateFunc.call(
+            updateFunc.call(
                 CoerceJavaToLua.coerce(entity),
                 LuaValue.valueOf(deltaTime),
                 CoerceJavaToLua.coerce(player)
             );
         } catch (Exception e) {
-            System.err.println("[Lua Runtime Error] Update Fail: " + e.getMessage());
+            System.err.println("[Lua Runtime Error] " + entity.scriptName + " 틱 연산 실패: " + e.getMessage());
         }
     }
 }

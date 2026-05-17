@@ -2,10 +2,10 @@ package engine;
 
 import engine.render.RenderCore;
 import engine.render.Texture;
+import engine.render.UiManager;
 import engine.physics.PhysicsCore;
 import engine.boot.Boot;
 import engine.boot.DataLoader;
-import engine.PlayerController;
 
 import javax.swing.JFrame;
 import java.awt.Canvas;
@@ -24,33 +24,29 @@ public class Core extends Canvas implements Runnable {
     private RenderCore renderCore;
     private PhysicsCore physicsCore;
     private Texture textureCore;
+    private UiManager uiManager;
     private PlayerController playerController;
     private ScriptEngine scriptEngine;
 
-    private double targetFps;
-    private String title = "Java Data-Driven Engine v0.1";
+    private String title = "Java Data-Driven Engine v0.3";
 
     public Core() {
-        // 1. 빈 부트 환경을 먼저 올리고 설정을 로드합니다.
         this.boot = new Boot();
         boot.loadConfig();
 
-        // 2. 물리 폴더를 스캔하여 Data.json을 실시간으로 발행/갱신합니다.
         DataLoader dataLoader = new DataLoader();
         dataLoader.scanAndGenerateJson();
-
-        // 3. 엔진 가상 캔버스 텍스처 코어를 생성하고 부트에 인젝션합니다.
         this.textureCore = new Texture();
+        this.uiManager = new UiManager(); 
+        
         boot.init(textureCore);
 
-        // 4. 별도의 매니저 클래스 없이, Boot가 방금 구워진 Data.json을 긁어 textureCore 메모리를 채웁니다.
-        boot.loadAssetsFromManifest(textureCore);
+        boot.loadAssetsFromManifest(textureCore, this.uiManager);
 
-        // 5. 스크립트 가상머신 구동 및 연산 모듈 조립
-        this.scriptEngine = new ScriptEngine(boot, textureCore);
         this.control = new Control();
         this.physicsCore = new PhysicsCore();
         this.playerController = new PlayerController();
+        this.scriptEngine = new ScriptEngine(boot, textureCore, this.uiManager);
 
         this.renderCore = new RenderCore(
                 boot.getConfig().baseWidth,
@@ -66,7 +62,7 @@ public class Core extends Canvas implements Runnable {
 
     private void initWindow() {
         frame = new JFrame(title);
-        Dimension size = new Dimension(1280, 720);
+        Dimension size = new Dimension(boot.getConfig().baseWidth, boot.getConfig().baseHeight);
         this.setPreferredSize(size);
         this.setMinimumSize(size);
         this.setMaximumSize(size);
@@ -143,7 +139,7 @@ public class Core extends Canvas implements Runnable {
             return;
         }
 
-        renderCore.render(scene);
+        renderCore.render(scene, this.uiManager);
 
         Graphics g = bs.getDrawGraphics();
         g.drawImage(renderCore.getFrameBuffer(), 0, 0, getWidth(), getHeight(), null);

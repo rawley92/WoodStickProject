@@ -15,7 +15,6 @@ public class PlayerController {
             return;
         }
 
-        // 회전
         if (input.s_turnLeft) {
             rotate(player, ROT_SPEED * dt);
         }
@@ -24,7 +23,6 @@ public class PlayerController {
             rotate(player, -ROT_SPEED * dt);
         }
 
-        // 이동
         double moveX = 0;
         double moveY = 0;
 

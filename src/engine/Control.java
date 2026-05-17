@@ -5,7 +5,6 @@ import java.awt.event.KeyListener;
 
 public class Control implements KeyListener {
 
-    // 1. RAW INPUT (이건 계속 변함)
     public boolean up;
     public boolean down;
     public boolean left;
@@ -14,7 +13,6 @@ public class Control implements KeyListener {
     public boolean turnLeft;
     public boolean turnRight;
 
-    // 2. SNAPSHOT (게임 로직이 보는 고정 값)
     public boolean s_up;
     public boolean s_down;
     public boolean s_left;
@@ -23,7 +21,6 @@ public class Control implements KeyListener {
     public boolean s_turnLeft;
     public boolean s_turnRight;
 
-    // ===== KEY EVENTS (RAW만 변경) =====
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
@@ -47,7 +44,6 @@ public class Control implements KeyListener {
     @Override
     public void keyTyped(KeyEvent e) {}
 
-    // ===== SNAPSHOT 생성 (핵심) =====
     public void snapshot() {
         s_up = up;
         s_down = down;

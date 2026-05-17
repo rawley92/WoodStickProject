@@ -2,6 +2,7 @@ package engine.boot;
 
 import engine.Scene;
 import engine.render.Texture;
+import engine.render.UiManager;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -10,48 +11,40 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * [Engine/Boot/Boot]
- * 매니페스트 생성/파싱 및 게임 전역 컨텍스트(Scene 관리)를 담당하는 부트스트랩 클래스입니다.
- */
 public class Boot {
     private Scene currentScene;
-    private Config config; // 기존 설정 오브젝트 유지 (가정)
+    private Config config;
 
-    // 빈 생성자로 변경하여 Core에서 순서 제약을 없앱니다.
     public Boot() {
     }
 
     public boolean loadConfig() {
-    // 기본 생성자를 호출하여 Config 클래스에 정의된 기본값(1280, 720 등)들을 주입합니다.
         this.config = new Config(); 
-        
-        // 나중에 진짜 외부 파일(config.json 같은)에서 읽어올 로직이 필요하다면 여기에 추가하면 됩니다.
         System.out.println("[BOOT] 전역 하드웨어 설정 로드 완료 (해상도: " + config.baseWidth + "x" + config.baseHeight + ")");
         return true;
     }
 
     public void init(Texture textureCore) {
-        // 기존 초기화 로직 유지
     }
 
-    public Config getConfig() {
-        return this.config;
-    }
-
-    public Scene getCurrentScene() {
-        return this.currentScene;
-    }
+    public Config getConfig() { return this.config; }
+    public Scene getCurrentScene() { return this.currentScene; }
 
     public void setAndActivateScene(Scene scene) {
         this.currentScene = scene;
         System.out.println("[BOOT] Active Scene Switched to: " + scene.getName());
     }
 
-    /**
-     * Data.json 파일을 읽어서 매니페스트에 등록된 에셋들을 메모리(textureManager)에 로드합니다.
-     */
-    public void loadAssetsFromManifest(Texture textureManager) {
+    private static class AssetEntry {
+        String id;
+        String path;
+        AssetEntry(String id, String path) {
+            this.id = id;
+            this.path = path;
+        }
+    }
+
+    public void loadAssetsFromManifest(Texture textureManager, UiManager uiManager) {
         String jsonPath = "Data/Data.json";
         File jsonFile = new File(jsonPath);
         if (!jsonFile.exists()) {
@@ -61,13 +54,13 @@ public class Boot {
 
         try {
             String content = new String(Files.readAllBytes(Paths.get(jsonPath)));
-
-            // 1. 벽 텍스처 파싱 및 로드
-            List<String> walls = parseJsonArray(content, "wall_textures");
-            int wallId = 1;
-            for (String wallFile : walls) {
-                File file = new File("Data/textures/walls/" + wallFile);
-                if (!file.exists()) continue;
+            List<AssetEntry> walls = parseJsonObjectArray(content, "wall_textures");
+            for (AssetEntry wall : walls) {
+                File file = new File(wall.path);
+                if (!file.exists()) {
+                    System.err.println("[REGISTRY ERROR] 벽 텍스처 파일이 없습니다: " + wall.path);
+                    continue;
+                }
 
                 BufferedImage img = ImageIO.read(file);
                 int w = img.getWidth();
@@ -75,18 +68,23 @@ public class Boot {
                 int[] pixels = new int[w * h];
                 img.getRGB(0, 0, w, h, pixels, 0, w);
 
-                textureManager.addWallTexture(wallId, w, h, pixels);
-                System.out.println("[REGISTRY] Wall Registered: ID " + wallId + " -> " + wallFile);
-                wallId++;
+                textureManager.addWallTextureWithStringId(wall.id, w, h, pixels);
+                System.out.println("[REGISTRY] Wall Stored in Library: [" + wall.id + "]");
             }
 
-            // 2. 캐릭터 에셋 파싱 및 로드
-            List<String> characters = parseJsonArray(content, "characters");
-            for (String charName : characters) {
-                File dir = new File("Data/Char/" + charName);
+            if (uiManager != null) {
+                List<AssetEntry> uis = parseJsonObjectArray(content, "ui_textures");
+                for (AssetEntry ui : uis) {
+                    uiManager.registerUi(ui.id, ui.path);
+                }
+            }
+
+            List<AssetEntry> characters = parseJsonObjectArray(content, "characters");
+            for (AssetEntry charAsset : characters) {
+                File dir = new File(charAsset.path);
                 if (!dir.exists()) continue;
 
-                registerCharacterSpriteSheet(textureManager, charName, dir);
+                registerCharacterSpriteSheet(textureManager, charAsset.id, dir);
             }
 
         } catch (Exception e) {
@@ -121,8 +119,8 @@ public class Boot {
         System.out.println("[REGISTRY] Character Asset Texture Loaded: " + name);
     }
 
-    private List<String> parseJsonArray(String json, String key) {
-        List<String> result = new ArrayList<>();
+    private List<AssetEntry> parseJsonObjectArray(String json, String key) {
+        List<AssetEntry> result = new ArrayList<>();
         int keyIndex = json.indexOf("\"" + key + "\"");
         if (keyIndex == -1) return result;
 
@@ -131,11 +129,23 @@ public class Boot {
         if (startBracket == -1 || endBracket == -1) return result;
 
         String arrayContent = json.substring(startBracket + 1, endBracket);
-        String[] tokens = arrayContent.split(",");
-        for (String token : tokens) {
-            String clean = token.replace("\"", "").replace("\n", "").trim();
-            if (!clean.isEmpty()) {
-                result.add(clean);
+
+        String[] objects = arrayContent.split("\\}");
+        for (String obj : objects) {
+            if (!obj.contains("{")) continue;
+
+            int idIdx = obj.indexOf("\"id\":");
+            int idStart = obj.indexOf("\"", idIdx + 5);
+            int idEnd = obj.indexOf("\"", idStart + 1);
+ 
+            int pathIdx = obj.indexOf("\"path\":");
+            int pathStart = obj.indexOf("\"", pathIdx + 7);
+            int pathEnd = obj.indexOf("\"", pathStart + 1);
+            
+            if (idStart != -1 && idEnd != -1 && pathStart != -1 && pathEnd != -1) {
+                String id = obj.substring(idStart + 1, idEnd).trim();
+                String path = obj.substring(pathStart + 1, pathEnd).trim();
+                result.add(new AssetEntry(id, path));
             }
         }
         return result;

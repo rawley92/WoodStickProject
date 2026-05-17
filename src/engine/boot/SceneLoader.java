@@ -1,6 +1,5 @@
 package engine.boot;
 
-import engine.render.Texture;
 import engine.Entity;
 import engine.Entity.EntityType;
 import engine.Scene;
@@ -9,21 +8,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
-/**
- * [Engine/Boot/SceneLoader]
- * 특정 레벨 폴더(Data/Level/레벨명) 내부의 map.dat와 scene.json을 결합하여
- * 인게임 런타임 씬(Scene) 객체를 생성합니다.
- */
 public class SceneLoader {
-
-    private final Texture textureManager;
-
-    public SceneLoader(Texture textureManager) {
-        this.textureManager = textureManager;
-    }
 
     public Scene load(String levelName) {
         String levelDir = "Data/Level/" + levelName;
@@ -35,18 +22,15 @@ public class SceneLoader {
         }
 
         try {
-            // 1. map.dat로부터 2차원 벽 데이터 구조 파싱
             int[][] map = loadMapArray(levelDir + "/map.dat");
             Scene scene = new Scene(levelName, map);
 
-            // 2. scene.json 파일 로드 및 메타데이터 파싱
             String jsonPath = levelDir + "/scene.json";
             String jsonContent = "";
             if (new File(jsonPath).exists()) {
                 jsonContent = new String(Files.readAllBytes(Paths.get(jsonPath)));
             }
 
-            // 3. 플레이어 스폰 위치 추출 및 생성 (기본값 설정 후 JSON이 있으면 덮어씀)
             double playerX = 3.5;
             double playerY = 3.5;
             if (!jsonContent.isEmpty()) {
@@ -60,7 +44,6 @@ public class SceneLoader {
             player.isActive = true;
             scene.setPlayer(player);
 
-            // 4. 엔티티 데이터 배치 (scene.json의 배치 명세를 기반으로 소환)
             if (!jsonContent.isEmpty()) {
                 loadLevelEntitiesFromJson(scene, jsonContent);
             }
@@ -75,11 +58,7 @@ public class SceneLoader {
         }
     }
 
-    /**
-     * scene.json 명세서에 기록된 복수 개의 엔티티 정보를 파싱하여 씬에 동적 배치합니다.
-     */
     private void loadLevelEntitiesFromJson(Scene scene, String json) {
-        // "entities": [ ... ] 구조 안에서 개별 엔티티 블록 분리 매칭
         int entitiesIdx = json.indexOf("\"entities\"");
         if (entitiesIdx == -1) return;
 
@@ -88,7 +67,6 @@ public class SceneLoader {
         if (startBracket == -1 || endBracket == -1) return;
 
         String entitiesArray = json.substring(startBracket + 1, endBracket);
-        // 각 객체 단위 { } 로 분할
         String[] entityTokens = entitiesArray.split("\\}");
 
         for (String token : entityTokens) {
@@ -99,7 +77,6 @@ public class SceneLoader {
             double x = parseJsonDouble(token, "x", 5.0);
             double y = parseJsonDouble(token, "y", 5.0);
 
-            // 텍스처 로딩은 Boot에서 이미 끝났으므로, 여기서는 인스턴스 배치만 수행합니다!
             Entity npc = new Entity(name, assetId, x, y);
             npc.type = EntityType.NPC;
             npc.isDynamic = true;
@@ -110,10 +87,6 @@ public class SceneLoader {
         }
     }
 
-    // ==========================================
-    // 유틸리티 데이터 파서 (외부 라이브러리 프리)
-    // ==========================================
-
     private int[][] loadMapArray(String path) throws IOException {
         List<String> lines = Files.readAllLines(Paths.get(path));
         int height = lines.size();
@@ -122,9 +95,6 @@ public class SceneLoader {
         int[][] map = new int[width][height];
         for (int y = 0; y < height; y++) {
             String[] tokens = lines.get(y).trim().split("\\s+");
-            for (String token : tokens) {
-                // ... 기존 파싱 로직과 동일
-            }
             for (int x = 0; x < width; x++) {
                 map[x][y] = Integer.parseInt(tokens[x]);
             }

@@ -1,12 +1,15 @@
 {
   "wall_textures": [
-    "1.png"
+    { "id": "brick_red", "path": "Data/textures/walls/brick_red.png" }
+  ],
+  "ui_textures": [
+    { "id": "hud1", "path": "Data/UI/hud1.png" },
+    { "id": "hud11", "path": "Data/UI/hud1.png" }
   ],
   "characters": [
   ],
   "levels": [
-    "test",
-    "title"
-
+    { "id": "test", "path": "Data/Level/test/map.dat" },
+    { "id": "title", "path": "Data/Level/title/map.dat" }
   ]
 }

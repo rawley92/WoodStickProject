@@ -6,12 +6,12 @@ import engine.Entity;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.Arrays;
+import java.util.Map;
 
 public class RenderCore {
 
     private final int width;
     private final int height;
-    private final int scale;
 
     private final BufferedImage frameBuffer;
     private final int[] pixels;
@@ -24,7 +24,6 @@ public class RenderCore {
     public RenderCore(int width, int height, int scale, Texture textureManager) {
         this.width = width;
         this.height = height;
-        this.scale = scale;
 
         this.frameBuffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         this.pixels = ((DataBufferInt) frameBuffer.getRaster().getDataBuffer()).getData();
@@ -39,7 +38,7 @@ public class RenderCore {
         return frameBuffer;
     }
 
-    public void render(Scene scene) {
+    public void render(Scene scene, UiManager uiManager) {
         clear();
 
         Entity player = scene.getPlayer();
@@ -50,17 +49,48 @@ public class RenderCore {
         renderFloorAndCeiling(player);
         renderWalls(scene, player);
         spriteRenderer.render(scene, pixels, width, height, zBuffer);
+
+        if (uiManager != null) {
+            renderUiOverlay(uiManager);
+        }
     }
 
     private void clear() {
         Arrays.fill(pixels, 0xFF000000);
     }
 
-    // =========================================================
-    // FLOOR / CEILING (LodeV correct version)
-    // =========================================================
-    private void renderFloorAndCeiling(Entity player) {
+    private void renderUiOverlay(UiManager uiManager) {
+        for (Map.Entry<String, Boolean> entry : uiManager.getUiFlags().entrySet()) {
+            if (!entry.getValue()) continue; 
 
+            String name = entry.getKey();
+            int[] uiPixels = uiManager.getPixels(name);
+            int uiW = uiManager.getWidth(name);
+            int uiH = uiManager.getHeight(name);
+
+            if (uiPixels == null) continue;
+            int startX = 0;
+            int startY = 0;
+
+            for (int y = 0; y < uiH; y++) {
+                int screenY = startY + y;
+                if (screenY < 0 || screenY >= height) continue; 
+
+                for (int x = 0; x < uiW; x++) {
+                    int screenX = startX + x;
+                    if (screenX < 0 || screenX >= width) continue; 
+
+                    int uiColor = uiPixels[x + y * uiW];
+                    int alpha = (uiColor >> 24) & 0xFF;
+
+                    if (alpha == 0) continue;
+
+                    pixels[screenX + screenY * width] = uiColor;
+                }
+            }
+        }
+    }
+    private void renderFloorAndCeiling(Entity player) {
         double rayDirX0 = player.dirX - player.planeX;
         double rayDirY0 = player.dirY - player.planeY;
         double rayDirX1 = player.dirX + player.planeX;
@@ -69,7 +99,6 @@ public class RenderCore {
         int halfHeight = height / 2;
 
         for (int y = halfHeight; y < height; y++) {
-
             double p = y - halfHeight;
             double posZ = 0.5 * height;
             double rowDistance = posZ / p;
@@ -81,13 +110,10 @@ public class RenderCore {
             double floorY = player.y + rowDistance * rayDirY0;
 
             for (int x = 0; x < width; x++) {
-
                 int cellX = (int) floorX;
                 int cellY = (int) floorY;
 
-                boolean grid =
-                        (Math.abs(floorX - cellX) < 0.03) ||
-                        (Math.abs(floorY - cellY) < 0.03);
+                boolean grid = (Math.abs(floorX - cellX) < 0.03) || (Math.abs(floorY - cellY) < 0.03);
 
                 int floorColor = grid ? 0xFF555555 : 0xFF444444;
                 int ceilingColor = grid ? 0xFF333333 : 0xFF222222;
@@ -101,11 +127,7 @@ public class RenderCore {
         }
     }
 
-    // =========================================================
-    // WALL RENDER (DDA)
-    // =========================================================
     private void renderWalls(Scene scene, Entity player) {
-
         double posX = player.x;
         double posY = player.y;
 
@@ -116,7 +138,6 @@ public class RenderCore {
         double planeY = player.planeY;
 
         for (int x = 0; x < width; x++) {
-
             double cameraX = 2.0 * x / width - 1.0;
 
             double rayDirX = dirX + planeX * cameraX;
@@ -154,7 +175,6 @@ public class RenderCore {
             boolean hit = false;
 
             while (!hit) {
-
                 if (sideDistX < sideDistY) {
                     sideDistX += deltaDistX;
                     mapX += stepX;
@@ -165,8 +185,7 @@ public class RenderCore {
                     side = 1;
                 }
 
-                if (mapX < 0 || mapX >= scene.getWidth()
-                        || mapY < 0 || mapY >= scene.getHeight()) {
+                if (mapX < 0 || mapX >= scene.getWidth() || mapY < 0 || mapY >= scene.getHeight()) {
                     hit = true;
                     continue;
                 }
@@ -210,36 +229,22 @@ public class RenderCore {
                 wallX = 1.0 - wallX;
             }
 
-            double step = 1.0 / lineHeight; 
+            double step = 1.0 / lineHeight;
             double texPos = (drawStart - height / 2.0 + lineHeight / 2.0) * step;
 
             int texId = scene.getTile(mapX, mapY);
 
             for (int y = drawStart; y < drawEnd; y++) {
-
                 double v = texPos;
-                texPos += step;        
+                texPos += step;
 
-                int color =
-                        textureManager.getWallPixel(
-                                texId,
-                                wallX,
-                                v
-                        );
-                        
+                int color = textureManager.getWallPixel(texId, wallX, v);
+
                 if (side == 1) {
-                    color = shader.tint(
-                            color,
-                            0x000000,
-                            0.25
-                    );
+                    color = shader.tint(color, 0x000000, 0.25);
                 }
 
-                color =
-                        shader.applyFog(
-                                color,
-                                perpWallDist
-                        );
+                color = shader.applyFog(color, perpWallDist);
 
                 pixels[x + y * width] = color;
             }

@@ -1,30 +1,22 @@
--- level1.lua
+-- title.lua (타이틀/기본 레벨 스크립트)
 
--- 1. 월드 기하구조(벽 배치 배열) 로드
+-- 1. 월드 기하구조 로드
+-- 자바의 ScriptEngine이 이 경로의 map.dat를 읽어 실시간으로 2차원 int[][] 배열 맵을 빌드합니다.
 engine.initScene("Title", "Data/Level/title/map.dat")
 
--- 2. 맵 데이터(map.dat) 내부의 숫자 코드에 텍스처 매핑 명시 (이름 기반 할당)
--- map.dat 내부에서 '1'번으로 써진 벽은 'brick_red' 프리로드 이미지를 씁니다.
+-- 2. 맵 데이터(map.dat) 내부의 숫자 코드(1, 2, 3)에 텍스처 ID 매핑
+-- 자바 단의 Texture 코어가 Data.json의 id 블록을 보고 메모리에 올려둔 픽셀들을 숫자에 링크합니다.
 engine.assignWallTexture(1, "brick_red")
 engine.assignWallTexture(2, "iron_gate")
 engine.assignWallTexture(3, "wood_panel")
 
--- 3. 중앙에 등록되어 있는 프리로드 캐릭터 에셋 이름으로 엔티티 스폰 및 인공지능 명칭 지정
-engine.spawnEntity("NPC", "npc_guard", 4.5, 6.2, "guard_patrol")
-engine.spawnEntity("NPC", "npc_slime", 10.0, 3.5, "slime_idle")
+-- 3. UI 레이아웃 활성화
+-- DataLoader가 생성한 "hud1" (또는 "hud") ID를 타겟팅하여 화면 최상단 0,0 고정 출력 버퍼를 켭니다.
+engine.setUiVisible("hud1", true)
 
--- 4. 런타임 프레임 갱신 훅
-function onEntityUpdate(entity, dt, player)
-    -- AI 및 트리거 조건 로직 기술...
-    if entity.scriptName == "guard_patrol" then
-        -- 경비병 AI 동작 코드
-    end
+-- 4. 플레이어 초기 스폰 위치 및 카메라 벡터 동적 세팅 (scene.json 기반 제어 예시)
+-- 스크립트에서 초기 뷰포트 방향(dirX, dirY)과 레이캐스팅 평면(planeX, planeY)을 직접 찔러줍니다.
+engine.setupPlayer(3.5, 3.5, -1.0, 0.0, 0.0, 0.66)
 
-    -- 레벨 전환 조건 판정
-    if player.x > 14.0 then
-        engine.log("Level 1 클리어. 다음 레벨로 전환합니다.")
-        dofile("Data/Script/level2.lua") -- 레벨 2 스크립트로 완전 스위칭
-    end
-end
-
-engine.log("Level 1 스크립트 빌드 성공.")
+-- 5. 월드 내 오브젝트/NPC 스폰 
+engine.spawnEntity("NPC", "npc_guard", 4.5, 6.2, "default")

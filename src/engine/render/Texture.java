@@ -6,36 +6,20 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
-/**
- * [Engine/Render/Texture]
- * 모든 에셋의 픽셀 데이터를 관리.
- * 벽 / 스프라이트 텍스처 샘플링 담당.
- */
 public class Texture {
 
-    // =========================
-    // Wall Texture
-    // =========================
-
     private Map<Integer, int[]> wallTextures = new HashMap<>();
-
     private Map<Integer, Integer> wallWidthMap = new HashMap<>();
     private Map<Integer, Integer> wallHeightMap = new HashMap<>();
 
-    // =========================
-    // Sprite Texture
-    // =========================
-
-    // 구조:
-    // <AssetName, [Direction][Frame][Pixels]>
     private Map<String, int[][][]> assetLibrary = new HashMap<>();
-
     private Map<String, Integer> widthMap = new HashMap<>();
     private Map<String, Integer> heightMap = new HashMap<>();
 
-    /**
-     * 벽 텍스처 등록
-     */
+    private Map<String, int[]> wallAssetLibrary = new HashMap<>();
+    private Map<String, Integer> wallAssetWidths = new HashMap<>();
+    private Map<String, Integer> wallAssetHeights = new HashMap<>();
+
     public void addWallTexture(
             int id,
             int width,
@@ -48,9 +32,6 @@ public class Texture {
         wallHeightMap.put(id, height);
     }
 
-    /**
-     * 스프라이트 에셋 등록
-     */
     public void addAsset(
             String name,
             int dirCount,
@@ -67,9 +48,6 @@ public class Texture {
         heightMap.put(name, height);
     }
 
-    /**
-     * 프레임 픽셀 데이터 주입
-     */
     public void setPixels(
             String name,
             int dir,
@@ -85,9 +63,6 @@ public class Texture {
         asset[dir][frame] = pixels;
     }
 
-    /**
-     * 스프라이트 픽셀 샘플링
-     */
     public int getPixel(
             String name,
             int dir,
@@ -129,9 +104,6 @@ public class Texture {
         return pixels[x + y * texW];
     }
 
-    /**
-     * 벽 텍스처 샘플링
-     */
     public int getWallPixel(
             int id,
             double u,
@@ -155,63 +127,55 @@ public class Texture {
         return pixels[x + y * texW];
     }
 
-    /**
-     * NPC 방향 인덱스 계산
-     */
-    public int calculateDirIndex(
-            double npcRotation,
-            double relativeAngle) {
+    public int calculateDirIndex(double npcRotation, double relativeAngle) {
+    
+        double angle = relativeAngle - npcRotation;
 
-                double angle =
-                        (npcRotation - relativeAngle + Math.PI * 2)
-                        % (Math.PI * 2);
+        angle = angle % (Math.PI * 2);
+        if (angle < 0) {
+            angle += Math.PI * 2;
+        }
 
-                return (int)Math.round(
-                        angle / (Math.PI / 4)
-                ) % 8;
-            }
-            public void loadWallTexture(
-                int id,
-                String path
-        ) {
+        int dirIndex = (int) Math.floor((angle + Math.PI / 8.0) / (Math.PI / 4.0));
+        
+        return dirIndex % 8;
+    }
 
-            try {
+    public boolean hasMultipleDirections(String assetId) {
+        if (assetId.startsWith("item_") || assetId.equals("key") || assetId.equals("barrel")) {
+            return false;
+        }
+        return true; 
+    }
 
-                BufferedImage img =
-                        ImageIO.read(new File(path));
+    public void addWallTextureWithStringId(String stringId, int width, int height, int[] pixels) {
+        wallAssetLibrary.put(stringId, pixels);
+        wallAssetWidths.put(stringId, width);
+        wallAssetHeights.put(stringId, height);
+    }
 
-                int w = img.getWidth();
-                int h = img.getHeight();
+    public void bindIntIdToStringId(int intId, String stringId) {
+        if (wallAssetLibrary.containsKey(stringId)) {
+            addWallTexture(intId, wallAssetWidths.get(stringId), wallAssetHeights.get(stringId), wallAssetLibrary.get(stringId));
+            System.out.println("[SCRIPT BIND] 맵 코드 " + intId + "번  [" + stringId + "] 텍스처 링크 완료.");
+        } else {
+            System.err.println("[SCRIPT ERROR] 명세서에 '" + stringId + "' 텍스처가 로드되지 않았습니다!");
+        }
+    }
 
-                int[] pixels = new int[w * h];
+    public void loadWallTexture(int id, String path) {
+        try {
+            BufferedImage img = ImageIO.read(new File(path));
+            int w = img.getWidth();
+            int h = img.getHeight();
+            int[] pixels = new int[w * h];
 
-                img.getRGB(
-                        0,
-                        0,
-                        w,
-                        h,
-                        pixels,
-                        0,
-                        w
-                );
+            img.getRGB(0, 0, w, h, pixels, 0, w);
+            addWallTexture(id, w, h, pixels);
 
-                addWallTexture(
-                        id,
-                        w,
-                        h,
-                        pixels
-                );
-
-                System.out.println(
-                        "[TEXTURE] Loaded wall texture: " + path
-                );
-
-            } catch (Exception e) {
-
-                System.err.println(
-                        "[TEXTURE ERROR] Failed: " + path
-                );
-
+            System.out.println("[TEXTURE] Loaded wall texture: " + path);
+        } catch (Exception e) {
+            System.err.println("[TEXTURE ERROR] Failed: " + path);
             e.printStackTrace();
         }
     }
