@@ -1,0 +1,12 @@
+{
+  "wall_textures": [
+    "1.png"
+  ],
+  "characters": [
+  ],
+  "levels": [
+    "test",
+    "title"
+
+  ]
+}
