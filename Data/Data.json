@@ -1,15 +1,57 @@
 {
-  "wall_textures": [
-    { "id": "brick_red", "path": "Data/textures/walls/brick_red.png" }
+  "Audio": [
+    { "index": "0x00", "id": "Audio.Gt3LV", "path": "Data/Audio/Gt3LV.wav" },
+    { "index": "0x01", "id": "Audio.Mop", "path": "Data/Audio/Mop.wav" },
+    { "index": "0x02", "id": "Audio.SfxTest", "path": "Data/Audio/SfxTest.wav" }
   ],
-  "ui_textures": [
-    { "id": "hud1", "path": "Data/UI/hud1.png" },
-    { "id": "hud11", "path": "Data/UI/hud1.png" }
+  "Char": [
+    { "index": "0x03", "id": "Char.SomeNPC.Base", "path": "Data/Char/SomeNPC/Base.png" },
+    { "index": "0x04", "id": "Char.SomeNPC.walk_back_1", "path": "Data/Char/SomeNPC/walk_back_1.png" },
+    { "index": "0x05", "id": "Char.SomeNPC.walk_back_2", "path": "Data/Char/SomeNPC/walk_back_2.png" },
+    { "index": "0x06", "id": "Char.SomeNPC.walk_back_3", "path": "Data/Char/SomeNPC/walk_back_3.png" },
+    { "index": "0x07", "id": "Char.SomeNPC.walk_back_4", "path": "Data/Char/SomeNPC/walk_back_4.png" },
+    { "index": "0x08", "id": "Char.SomeNPC.walk_back_5", "path": "Data/Char/SomeNPC/walk_back_5.png" },
+    { "index": "0x09", "id": "Char.SomeNPC.walk_back_6", "path": "Data/Char/SomeNPC/walk_back_6.png" },
+    { "index": "0x0A", "id": "Char.SomeNPC.walk_front_1", "path": "Data/Char/SomeNPC/walk_front_1.png" },
+    { "index": "0x0B", "id": "Char.SomeNPC.walk_front_2", "path": "Data/Char/SomeNPC/walk_front_2.png" },
+    { "index": "0x0C", "id": "Char.SomeNPC.walk_front_3", "path": "Data/Char/SomeNPC/walk_front_3.png" },
+    { "index": "0x0D", "id": "Char.SomeNPC.walk_front_4", "path": "Data/Char/SomeNPC/walk_front_4.png" },
+    { "index": "0x0E", "id": "Char.SomeNPC.walk_front_5", "path": "Data/Char/SomeNPC/walk_front_5.png" },
+    { "index": "0x0F", "id": "Char.SomeNPC.walk_front_6", "path": "Data/Char/SomeNPC/walk_front_6.png" },
+    { "index": "0x10", "id": "Char.SomeNPC.walk_left_1", "path": "Data/Char/SomeNPC/walk_left_1.png" },
+    { "index": "0x11", "id": "Char.SomeNPC.walk_left_2", "path": "Data/Char/SomeNPC/walk_left_2.png" },
+    { "index": "0x12", "id": "Char.SomeNPC.walk_left_3", "path": "Data/Char/SomeNPC/walk_left_3.png" },
+    { "index": "0x13", "id": "Char.SomeNPC.walk_left_4", "path": "Data/Char/SomeNPC/walk_left_4.png" },
+    { "index": "0x14", "id": "Char.SomeNPC.walk_left_5", "path": "Data/Char/SomeNPC/walk_left_5.png" },
+    { "index": "0x15", "id": "Char.SomeNPC.walk_left_6", "path": "Data/Char/SomeNPC/walk_left_6.png" },
+    { "index": "0x16", "id": "Char.SomeNPC.walk_right_1", "path": "Data/Char/SomeNPC/walk_right_1.png" },
+    { "index": "0x17", "id": "Char.SomeNPC.walk_right_2", "path": "Data/Char/SomeNPC/walk_right_2.png" },
+    { "index": "0x18", "id": "Char.SomeNPC.walk_right_3", "path": "Data/Char/SomeNPC/walk_right_3.png" },
+    { "index": "0x19", "id": "Char.SomeNPC.walk_right_4", "path": "Data/Char/SomeNPC/walk_right_4.png" },
+    { "index": "0x1A", "id": "Char.SomeNPC.walk_right_5", "path": "Data/Char/SomeNPC/walk_right_5.png" },
+    { "index": "0x1B", "id": "Char.SomeNPC.walk_right_6", "path": "Data/Char/SomeNPC/walk_right_6.png" }
   ],
-  "characters": [
+  "Level": [
+    { "index": "0x1C", "id": "Level.test.map", "path": "Data/Level/test/map.dat" },
+    { "index": "0x1D", "id": "Level.test.scene", "path": "Data/Level/test/scene.json" },
+    { "index": "0x1E", "id": "Level.title.map", "path": "Data/Level/title/map.dat" },
+    { "index": "0x1F", "id": "Level.title.scene", "path": "Data/Level/title/scene.json" }
   ],
-  "levels": [
-    { "id": "test", "path": "Data/Level/test/map.dat" },
-    { "id": "title", "path": "Data/Level/title/map.dat" }
+  "Script": [
+    { "index": "0x20", "id": "Script.main", "path": "Data/Script/main.lua" },
+    { "index": "0x21", "id": "Script.NPC1", "path": "Data/Script/NPC1.lua" },
+    { "index": "0x22", "id": "Script.test", "path": "Data/Script/test.lua" },
+    { "index": "0x23", "id": "Script.title", "path": "Data/Script/title.lua" },
+    { "index": "0x24", "id": "Script.ui_anim_test", "path": "Data/Script/ui_anim_test.lua" }
+  ],
+  "Textures": [
+    { "index": "0x25", "id": "Textures.Level.12", "path": "Data/Textures/Level/12.png" },
+    { "index": "0x26", "id": "Textures.Level.Celling_1", "path": "Data/Textures/Level/Celling_1.png" },
+    { "index": "0x27", "id": "Textures.Level.Floor_1", "path": "Data/Textures/Level/Floor_1.png" },
+    { "index": "0x28", "id": "Textures.Level.Wall_1", "path": "Data/Textures/Level/Wall_1.png" },
+    { "index": "0x29", "id": "Textures.UI.hud1", "path": "Data/Textures/UI/hud1.png" },
+    { "index": "0x2A", "id": "Textures.UI.hud1_frame0", "path": "Data/Textures/UI/hud1_frame0.png" },
+    { "index": "0x2B", "id": "Textures.UI.hud1_frame1", "path": "Data/Textures/UI/hud1_frame1.png" },
+    { "index": "0x2C", "id": "Textures.UI.hud1_frame2", "path": "Data/Textures/UI/hud1_frame2.png" }
   ]
 }
