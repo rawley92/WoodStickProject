@@ -1,22 +1,32 @@
--- title.lua (타이틀/기본 레벨 스크립트)
+-- title.lua (레벨 초기화 스크립트)
 
 -- 1. 월드 기하구조 로드
--- 자바의 ScriptEngine이 이 경로의 map.dat를 읽어 실시간으로 2차원 int[][] 배열 맵을 빌드합니다.
-engine.initScene("Title", "Data/Level/title/map.dat")
+-- 이전: engine.initScene("Title", "Data/Level/title/map.dat")
+-- 변경: map.dat 파일도 Data.json에 스캔되어 "map" 또는 "title_map"이라는 ID를 가짐
+engine.initScene("Level.title.map")
 
--- 2. 맵 데이터(map.dat) 내부의 숫자 코드(1, 2, 3)에 텍스처 ID 매핑
--- 자바 단의 Texture 코어가 Data.json의 id 블록을 보고 메모리에 올려둔 픽셀들을 숫자에 링크합니다.
-engine.assignWallTexture(1, "brick_red")
-engine.assignWallTexture(2, "iron_gate")
-engine.assignWallTexture(3, "wood_panel")
+-- 2. 맵 데이터(int)와 텍스처(String ID) 바인딩
+-- Java의 TextureCore가 문자열 ID에 해당하는 픽셀 배열을 찾아 맵 코드에 연결함
+engine.assignWallTexture("Textures.Level.Wall_1")
 
--- 3. UI 레이아웃 활성화
--- DataLoader가 생성한 "hud1" (또는 "hud") ID를 타겟팅하여 화면 최상단 0,0 고정 출력 버퍼를 켭니다.
-engine.setUiVisible("hud1", true)
+-- [추가] 3. 바닥과 천장 텍스처 글로벌 설정 (다음 단계를 위한 준비)
+-- 맵의 빈 공간(0)에 그려질 바닥과 천장을 ID로 지정
+engine.setFloorTexture("Textures.Level.Floor_1")
+engine.setCeilingTexture("Textures.Level.Celling_1")
 
--- 4. 플레이어 초기 스폰 위치 및 카메라 벡터 동적 세팅 (scene.json 기반 제어 예시)
--- 스크립트에서 초기 뷰포트 방향(dirX, dirY)과 레이캐스팅 평면(planeX, planeY)을 직접 찔러줍니다.
-engine.setupPlayer(3.5, 3.5, -1.0, 0.0, 0.0, 0.66)
+-- 5. 플레이어 초기 스폰 위치 및 카메라 뷰포트 세팅
+engine.setupPlayer(3.5, 3.5, -1.0, 0.0, 0.0, 0.88)
 
--- 5. 월드 내 오브젝트/NPC 스폰 
-engine.spawnEntity("NPC", "npc_guard", 4.5, 6.2, "default")
+engine.playBgm("Audio.Gt3LV", true)
+
+-- 6. 월드 내 오브젝트/NPC 스폰 
+-- (타입, 에셋ID, X, Y, AI스크립트ID)
+-- 엔진에 등록된 spawnEntity 함수를 호출하여 NPC 생성
+-- 이름, 에셋ID, 초기위치(x,y), 스크립트 파일명을 전달합니다.
+-- 6. 월드 내 오브젝트 스폰
+-- NPC 스폰: "Script.NPC1" 스크립트를 사용
+engine.spawnEntity("NPC_Bob", "Char.SomeNPC.Base", 5.0, 5.0, "Script.NPC1")
+
+-- UI 애니메이션 테스트 스폰: "Script.ui_anim_test" 스크립트를 사용
+-- (이름은 NPC와 겹치지 않게 고유하게 지정하세요)
+engine.spawnEntity("UI_Overlay", "Textures.UI.hud1", 0.0, 0.0, "Script.ui_anim_test")
