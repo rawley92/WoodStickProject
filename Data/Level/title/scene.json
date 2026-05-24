@@ -1,0 +1,29 @@
+{
+  "name": "Title Scene",
+
+  "player": {
+    "x": 2.5,
+    "y": 2.5,
+    "dirX": 1.0,
+    "dirY": 0.0,
+    "planeX": 0.0,
+    "planeY": 0.9
+  },
+
+  "map": {
+    "width": 8,
+    "height": 8,
+    "file": "map.dat"
+  },
+
+  "entities": [
+    {
+      "id": "start_button",
+      "type": "ui",
+      "x": 4.0,
+      "y": 3.0,
+      "sprite": "start_button",
+      "script": "title.js"
+    }
+  ]
+}
