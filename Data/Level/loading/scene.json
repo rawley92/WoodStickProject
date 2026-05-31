@@ -1,0 +1,9 @@
+{
+  "name": "Loading",
+  "map": {
+    "width": 3,
+    "height": 3,
+    "file": "map.dat"
+  },
+  "entities": []
+}

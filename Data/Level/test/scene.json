@@ -1,0 +1,17 @@
+{
+  "name": "Debug Room",
+  "player": {
+    "x": 15.5,
+    "y": 15.5,
+    "dirX": -1.0,
+    "dirY": 0.0,
+    "planeX": 0.0,
+    "planeY": 0.88
+  },
+  "map": {
+    "width": 31,
+    "height": 31,
+    "file": "map.dat"
+  },
+  "entities": []
+}
