@@ -1,14 +1,13 @@
 local selected = 1
-local fadeTimer = 0
 local enterWasDown = false
 local upWasDown = false
 local downWasDown = false
 local pulseTimer = 0
 local pendingAction = nil
+local waitForEnterRelease = true
 local DebugHotkey = assert(loadfile("Data/Script/debug_hotkey.lua", "bt", _ENV))()
 local MenuUi = assert(loadfile("Data/Script/menu_ui.lua", "bt", _ENV))()
-
-local BUTTONS = { "Start", "Exit" }
+local BUTTONS = { "Title", "Exit" }
 
 local function setupWorld()
     engine.assignWallTexture("Textures.Level.Wall_1")
@@ -17,27 +16,28 @@ local function setupWorld()
 end
 
 local function spawnController()
-    engine.spawnEntity("Title_Controller", "", 0.0, 0.0, "Script.title")
+    engine.spawnEntity("End_Controller", "", 0.0, 0.0, "Script.end")
 end
 
-local function loadTitle()
-    _G.GameState.currentScene = "title"
-    _G.GameState.debugNoDeath = false
+local function loadScene()
+    _G.GameState.currentScene = "end"
+    selected = 1
+    enterWasDown = false
+    upWasDown = false
+    downWasDown = false
+    pulseTimer = 0
+    pendingAction = nil
+    waitForEnterRelease = true
 
-    engine.initScene("Title", "Level.title.map")
+    engine.initScene("End", "Level.end.map")
     setupWorld()
-    engine.setupPlayer(3.5, 3.5, -1.0, 0.0, 0.0, 0.88)
+    engine.setupPlayer(1.5, 1.5, -1.0, 0.0, 0.0, 0.88)
     spawnController()
 end
 
 local function choose()
     pulseTimer = 0.16
-
-    if selected == 1 then
-        pendingAction = "start"
-    else
-        pendingAction = "exit"
-    end
+    pendingAction = selected == 1 and "title" or "exit"
 end
 
 local function runPendingAction()
@@ -46,35 +46,26 @@ local function runPendingAction()
     local action = pendingAction
     pendingAction = nil
 
-    if action == "start" then
-        local loading = assert(loadfile("Data/Script/loading.lua", "bt", _ENV))
-        loading()
-    elseif action == "exit" then
+    if action == "title" then
+        local title = assert(loadfile("Data/Script/title.lua", "bt", _ENV))
+        title()
+    else
         engine.exit()
     end
 end
 
 local function draw()
-    local alpha = math.min(1.0, fadeTimer / 1.5)
-
     engine.uiClear()
-    MenuUi.drawBackground(0x0A2C57, 0.34, alpha)
-    MenuUi.drawTitle("ENTROPISM", 180, 78, 0xD8E6FF, alpha)
+    MenuUi.drawBackground(0x4A0000, 0.46, 1.0)
+    MenuUi.drawTitle("TERMINATED", 180, 74, 0xFFD6D6, 1.0)
 
     for i, label in ipairs(BUTTONS) do
-        MenuUi.drawButton(label, i, selected == i, pulseTimer, 0x4EB3FF, alpha)
+        MenuUi.drawButton(label, i, selected == i, pulseTimer, 0xFF4040, 1.0)
     end
-
-    engine.uiTextCenter("ENTER YOUR ADVENTURE", 640, 675, 24, 0x7DBAFF, alpha)
 end
 
 function update(entity, dt, player, control)
-    fadeTimer = fadeTimer + dt
-
-    if pulseTimer > 0 then
-        pulseTimer = pulseTimer - dt
-    end
-
+    if pulseTimer > 0 then pulseTimer = pulseTimer - dt end
     runPendingAction()
 
     if control ~= nil then
@@ -82,14 +73,22 @@ function update(entity, dt, player, control)
             return
         end
 
+        if waitForEnterRelease then
+            if not control.s_enter then
+                waitForEnterRelease = false
+            end
+
+            enterWasDown = control.s_enter
+            draw()
+            return
+        end
+
         if control.s_menuUp and not upWasDown then
-            selected = selected - 1
-            if selected < 1 then selected = #BUTTONS end
+            selected = selected == 1 and #BUTTONS or selected - 1
         end
 
         if control.s_menuDown and not downWasDown then
-            selected = selected + 1
-            if selected > #BUTTONS then selected = 1 end
+            selected = selected == #BUTTONS and 1 or selected + 1
         end
 
         if control.s_enter and not enterWasDown and pendingAction == nil then
@@ -104,6 +103,4 @@ function update(entity, dt, player, control)
     draw()
 end
 
-if _G.GameState.currentScene ~= "title" then
-    loadTitle()
-end
+loadScene()

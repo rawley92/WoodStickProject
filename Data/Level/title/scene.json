@@ -4,10 +4,10 @@
   "player": {
     "x": 2.5,
     "y": 2.5,
-    "dirX": -1.0,
+    "dirX": 1.0,
     "dirY": 0.0,
     "planeX": 0.0,
-    "planeY": 0.66
+    "planeY": 0.9
   },
 
   "map": {

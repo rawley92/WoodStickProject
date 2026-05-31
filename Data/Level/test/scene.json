@@ -1,28 +1,17 @@
 {
-  "name": "Test Level",
-
+  "name": "Debug Room",
   "player": {
-    "x": 3.5,
-    "y": 3.5,
+    "x": 15.5,
+    "y": 15.5,
     "dirX": -1.0,
     "dirY": 0.0,
     "planeX": 0.0,
-    "planeY": 0.66
+    "planeY": 0.88
   },
-
   "map": {
-    "width": 32,
-    "height": 32,
+    "width": 31,
+    "height": 31,
     "file": "map.dat"
   },
-
-  "entities": [
-    {
-      "id": "npc_01",
-      "type": "npc",
-      "x": 10.5,
-      "y": 8.5,
-      "sprite": "npc_guard"
-    }
-  ]
+  "entities": []
 }
