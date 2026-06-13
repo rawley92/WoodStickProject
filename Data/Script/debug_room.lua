@@ -1,3 +1,6 @@
+-- Debug room scene controller.
+-- O 키로 진입하는 테스트용 씬이며, 몬스터/아이템 스폰과 공격 판정을 빠르게 확인하기 위해 사용한다.
+
 local Ui = dofile("Data/Script/ui.lua")
 local PlayerDamage = dofile("Data/Script/player_damage.lua")
 local CombatEffects = dofile("Data/Script/combat_effects.lua")
@@ -10,6 +13,7 @@ local SPAWN_DISTANCE = 4.0
 local MELEE_DAMAGE = 5
 local GUN_DAMAGE = 7
 
+-- 메뉴 입력은 edge-trigger 방식으로 처리하기 위해 이전 프레임 상태를 보관한다.
 local enterWasDown = false
 local upWasDown = false
 local downWasDown = false
@@ -21,6 +25,7 @@ local noticeText = nil
 local noticeTimer = 0
 local spawned = {}
 
+-- 디버그 메뉴에서 선택 가능한 스폰 타입 목록이다.
 local SPAWN_ENTRIES = {
     { label = "Spider", type = "enemy_spider" },
     { label = "Bull", type = "enemy_bull" },
@@ -30,15 +35,18 @@ local SPAWN_ENTRIES = {
     { label = "Melee", type = "weapon_melee" }
 }
 
+-- 디버그 좌표 계산 결과를 테스트 방 안쪽으로 제한한다.
 local function clamp(value, minValue, maxValue)
     return math.max(minValue, math.min(maxValue, value))
 end
 
+-- 짧은 디버그 알림 메시지를 설정한다.
 local function setNotice(text)
     noticeText = text
     noticeTimer = 0.9
 end
 
+-- UI 미니맵 표시용 단순 사각형 테스트 맵 데이터를 만든다.
 local function buildDebugMaze()
     local map = {}
 
@@ -47,6 +55,7 @@ local function buildDebugMaze()
 
         for x = 1, MAP_SIZE do
             if x == 1 or y == 1 or x == MAP_SIZE or y == MAP_SIZE then
+                -- 가장자리만 벽으로 막고 내부는 모두 이동 가능한 PATH로 둔다.
                 map[y][x] = WALL
             else
                 map[y][x] = PATH
@@ -63,15 +72,18 @@ local function buildDebugMaze()
     }
 end
 
+-- 디버그 씬 렌더링에 사용할 텍스처를 바인딩한다.
 local function setupWorld()
     engine.assignWallTexture("Textures.Level.Wall_1")
     engine.setFloorTexture("Textures.Level.Floor_1")
     engine.setCeilingTexture("Textures.Level.Celling_1")
 end
 
+-- 디버그 룸 진입 시 전역 게임 상태와 입력/스폰 상태를 초기화한다.
 local function resetDebugState()
     _G.GameState = _G.GameState or {}
     _G.GameState.currentScene = "debug_room"
+    -- 테스트 중 사망으로 씬이 끝나지 않게 PlayerDamage.minHp가 참조하는 플래그를 켠다.
     _G.GameState.debugNoDeath = true
     _G.GameState.maze = buildDebugMaze()
     _G.GameState.exit = nil
@@ -101,10 +113,12 @@ local function resetDebugState()
     spawned = {}
 end
 
+-- 디버그 룸 update를 담당할 controller 엔티티를 생성한다.
 local function spawnController()
     engine.spawnEntity("DebugRoom_Controller", "", 0.0, 0.0, "Script.debug_room")
 end
 
+-- Java Scene을 테스트 맵으로 초기화하고 플레이어를 중앙에 배치한다.
 local function loadDebugRoom()
     resetDebugState()
 
@@ -114,6 +128,7 @@ local function loadDebugRoom()
     spawnController()
 end
 
+-- 디버그 무적 플래그를 끄고 타이틀로 돌아간다.
 local function goToTitle()
     _G.GameState.debugNoDeath = false
 
@@ -121,18 +136,22 @@ local function goToTitle()
     title()
 end
 
+-- 플레이어 전방 일정 거리의 스폰 좌표를 계산한다.
 local function spawnPoint(player)
     local x = player.physics.x + player.camera.dirX * SPAWN_DISTANCE
     local y = player.physics.y + player.camera.dirY * SPAWN_DISTANCE
 
+    -- 벽 바깥에 스폰되지 않도록 테스트 맵 내부 좌표로 제한한다.
     return clamp(x, 1.5, MAP_SIZE - 1.5), clamp(y, 1.5, MAP_SIZE - 1.5)
 end
 
+-- 현재 메뉴 선택 항목을 플레이어 앞에 스폰한다.
 local function spawnSelected(player)
     local entry = SPAWN_ENTRIES[selected]
     local x, y = spawnPoint(player)
     local id = ObjectSpawn.spawn(entry.type, x, y)
 
+    -- 몬스터만 공격 대상 추적 테이블에 등록한다.
     if ObjectSpawn.isMonster(entry.type) and id ~= nil then
         spawned[id] = entry.label
     end
@@ -140,6 +159,7 @@ local function spawnSelected(player)
     setNotice("Spawned " .. entry.label)
 end
 
+-- 디버그 룸에서 스폰한 몬스터 중 플레이어 전방의 공격 대상을 찾는다.
 local function findAttackTarget(player, range)
     local bestId = nil
     local bestEntity = nil
@@ -154,6 +174,7 @@ local function findAttackTarget(player, range)
             local dx = entity.physics.x - player.physics.x
             local dy = entity.physics.y - player.physics.y
             local distance = math.sqrt(dx * dx + dy * dy)
+            -- maze.lua의 공격 판정과 동일하게 전방 거리와 측면 오차를 함께 검사한다.
             local forward = dx * player.camera.dirX + dy * player.camera.dirY
             local side = math.abs(dx * player.camera.dirY - dy * player.camera.dirX)
 
@@ -170,6 +191,8 @@ local function findAttackTarget(player, range)
     return bestId, bestEntity
 end
 
+-- 디버그 룸 전용 공격 처리다.
+-- 실제 플레이의 maze.lua useWeapon과 거의 같은 구조를 사용해 몬스터 테스트 결과가 일관되게 한다.
 local function attack(player)
     local state = _G.PlayerState
     local damage = MELEE_DAMAGE
@@ -196,6 +219,7 @@ local function attack(player)
         return
     end
 
+    -- 몬스터 HP는 각 monster_* 스크립트가 _G.monster_states에 저장한다.
     local mem = _G.monster_states[targetId]
     if mem == nil or mem.hp == nil then
         setNotice("No Target")
@@ -217,6 +241,7 @@ local function attack(player)
     end
 end
 
+-- 디버그 알림 타이머를 감소시킨다.
 local function updateNotice(dt)
     if noticeTimer > 0 then
         noticeTimer = noticeTimer - dt
@@ -225,12 +250,14 @@ local function updateNotice(dt)
     end
 end
 
+-- 디버그 룸에서는 HP가 0 이하가 되어도 계속 테스트할 수 있게 보정한다.
 local function keepPlayerAlive()
     if _G.PlayerState ~= nil and _G.PlayerState.hp <= 0 then
         _G.PlayerState.hp = 1
     end
 end
 
+-- 스폰 메뉴 패널을 그린다.
 local function drawDebugMenu()
     engine.uiRect(872, 64, 340, 392, 0x050505, 0.86)
     engine.uiText("DEBUG SPAWN", 900, 92, 30, 0xFFFFFF, 1.0)
@@ -247,6 +274,7 @@ local function drawDebugMenu()
     engine.uiText("Enter spawn", 904, 432, 20, 0x888888, 1.0)
 end
 
+-- 기본 HUD 위에 디버그 전용 안내와 스폰 메뉴를 추가로 그린다.
 local function draw(player)
     Ui.draw(player, false, false, noticeText, 1.0)
     engine.uiText("DEBUG ROOM", 48, 48, 30, 0xFFFFFF, 1.0)
@@ -258,6 +286,7 @@ local function draw(player)
     end
 end
 
+-- DebugRoom_Controller가 매 프레임 호출하는 update다.
 function update(entity, dt, player, control)
     PlayerDamage.tick(dt)
     Ui.tick(dt)
@@ -290,6 +319,7 @@ function update(entity, dt, player, control)
             attack(player)
         end
 
+        -- 입력 반복 방지를 위해 현재 프레임 키 상태를 다음 프레임 비교용으로 저장한다.
         upWasDown = control.s_menuUp
         downWasDown = control.s_menuDown
         enterWasDown = control.s_enter

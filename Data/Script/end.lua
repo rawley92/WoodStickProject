@@ -1,3 +1,6 @@
+-- End/game-over scene controller.
+-- 플레이어 HP가 0이 되었을 때 표시되는 실패 메뉴다.
+
 local selected = 1
 local enterWasDown = false
 local upWasDown = false
@@ -9,16 +12,19 @@ local DebugHotkey = assert(loadfile("Data/Script/debug_hotkey.lua", "bt", _ENV))
 local MenuUi = assert(loadfile("Data/Script/menu_ui.lua", "bt", _ENV))()
 local BUTTONS = { "Title", "Exit" }
 
+-- 결과 화면 월드 배경에 사용할 기본 텍스처를 바인딩한다.
 local function setupWorld()
     engine.assignWallTexture("Textures.Level.Wall_1")
     engine.setFloorTexture("Textures.Level.Floor_1")
     engine.setCeilingTexture("Textures.Level.Celling_1")
 end
 
+-- End 메뉴를 매 프레임 업데이트할 controller 엔티티를 생성한다.
 local function spawnController()
     engine.spawnEntity("End_Controller", "", 0.0, 0.0, "Script.end")
 end
 
+-- End 씬을 로드하고 메뉴 입력 상태를 초기화한다.
 local function loadScene()
     _G.GameState.currentScene = "end"
     selected = 1
@@ -35,11 +41,13 @@ local function loadScene()
     spawnController()
 end
 
+-- 현재 선택된 메뉴 액션을 pulse 후 실행되도록 예약한다.
 local function choose()
     pulseTimer = 0.16
     pendingAction = selected == 1 and "title" or "exit"
 end
 
+-- 예약된 액션을 타이틀 복귀 또는 프로그램 종료로 실행한다.
 local function runPendingAction()
     if pendingAction == nil or pulseTimer > 0 then return end
 
@@ -54,6 +62,7 @@ local function runPendingAction()
     end
 end
 
+-- 게임오버 메뉴 UI를 그린다.
 local function draw()
     engine.uiClear()
     MenuUi.drawBackground(0x4A0000, 0.46, 1.0)
@@ -64,6 +73,7 @@ local function draw()
     end
 end
 
+-- End_Controller 엔티티가 호출하는 메뉴 update 함수다.
 function update(entity, dt, player, control)
     if pulseTimer > 0 then pulseTimer = pulseTimer - dt end
     runPendingAction()
@@ -74,6 +84,7 @@ function update(entity, dt, player, control)
         end
 
         if waitForEnterRelease then
+            -- 이전 씬에서 Enter가 눌린 상태로 넘어올 수 있으므로 키를 뗄 때까지 메뉴 선택을 막는다.
             if not control.s_enter then
                 waitForEnterRelease = false
             end

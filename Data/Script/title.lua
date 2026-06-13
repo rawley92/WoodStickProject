@@ -1,3 +1,6 @@
+-- Title scene controller.
+-- 최초 진입 메뉴를 표시하고 Start/Exit 선택을 처리한다.
+
 local selected = 1
 local fadeTimer = 0
 local enterWasDown = false
@@ -10,16 +13,19 @@ local MenuUi = assert(loadfile("Data/Script/menu_ui.lua", "bt", _ENV))()
 
 local BUTTONS = { "Start", "Exit" }
 
+-- 타이틀 배경용 월드 텍스처를 바인딩한다.
 local function setupWorld()
     engine.assignWallTexture("Textures.Level.Wall_1")
     engine.setFloorTexture("Textures.Level.Floor_1")
     engine.setCeilingTexture("Textures.Level.Celling_1")
 end
 
+-- 타이틀 메뉴의 update를 호출받을 controller 엔티티를 생성한다.
 local function spawnController()
     engine.spawnEntity("Title_Controller", "", 0.0, 0.0, "Script.title")
 end
 
+-- Java Scene을 타이틀 맵으로 초기화하고 플레이어 카메라를 배치한다.
 local function loadTitle()
     _G.GameState.currentScene = "title"
     _G.GameState.debugNoDeath = false
@@ -30,6 +36,8 @@ local function loadTitle()
     spawnController()
 end
 
+-- 현재 선택된 버튼의 액션을 예약한다.
+-- 바로 실행하지 않고 pulse 애니메이션이 끝난 뒤 runPendingAction에서 실행한다.
 local function choose()
     pulseTimer = 0.16
 
@@ -40,6 +48,7 @@ local function choose()
     end
 end
 
+-- 예약된 메뉴 액션을 실제 씬 전환 또는 종료로 실행한다.
 local function runPendingAction()
     if pendingAction == nil or pulseTimer > 0 then return end
 
@@ -54,6 +63,7 @@ local function runPendingAction()
     end
 end
 
+-- 타이틀 화면의 배경, 제목, 버튼을 그린다.
 local function draw()
     local alpha = math.min(1.0, fadeTimer / 1.5)
 
@@ -68,6 +78,7 @@ local function draw()
     engine.uiTextCenter("ENTER YOUR ADVENTURE", 640, 675, 24, 0x7DBAFF, alpha)
 end
 
+-- Title_Controller 엔티티가 매 프레임 호출하는 메뉴 진입점이다.
 function update(entity, dt, player, control)
     fadeTimer = fadeTimer + dt
 
@@ -82,6 +93,7 @@ function update(entity, dt, player, control)
             return
         end
 
+        -- up/down/enter는 wasDown 플래그로 edge-trigger 입력만 처리한다.
         if control.s_menuUp and not upWasDown then
             selected = selected - 1
             if selected < 1 then selected = #BUTTONS end
