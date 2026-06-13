@@ -9,6 +9,10 @@ import engine.boot.AssetRegistry;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
+/**
+ * 벽, 바닥, 천장, 보조 스프라이트 텍스처의 픽셀 데이터를 관리한다.
+ * AssetRegistry의 ID/index 체계를 실제 렌더링용 픽셀 배열로 바꾸는 계층이다.
+ */
 public class Texture {
 
     private Map<Integer, int[]> wallTextures = new HashMap<>();
@@ -29,8 +33,14 @@ public class Texture {
     private Map<Integer, Integer> flatWidths = new HashMap<>();
     private Map<Integer, Integer> flatHeights = new HashMap<>();
 
+    /**
+     * 에셋 ID 목록을 실제 이미지 픽셀 캐시로 로드한다.
+     * 벽 텍스처와 flat 텍스처 분류는 파일 로드 후 ID 규칙에 따라 하위 등록 메서드로 위임한다.
+     */
     public void loadTextures(String[] textureIds) {
         for (String id : textureIds) {
+            // 레지스트리는 문자열 ID와 8비트 index를 함께 제공한다.
+            // 픽셀 저장소는 대부분 index를 키로 사용한다.
             int assetIndex = AssetRegistry.getIndex(id);
             String path = AssetRegistry.getPath(assetIndex);
             
@@ -71,6 +81,9 @@ public class Texture {
         }
     }
 
+    /**
+     * 맵 타일 숫자와 벽 텍스처 픽셀 데이터를 직접 연결한다.
+     */
     public void addWallTexture(
             int id,
             int width,
@@ -83,20 +96,33 @@ public class Texture {
         wallHeightMap.put(id, height);
     }
 
+    /**
+     * 바닥, 천장, UI 계열처럼 반복 샘플링 가능한 flat 텍스처를 index로 등록한다.
+     */
     public void addFlatTexture(int index, int w, int h, int[] pixels) {
         flatTextures.put(index, pixels);
         flatWidths.put(index, w);
         flatHeights.put(index, h);
     }
 
+    /**
+     * 바닥 렌더링에 사용할 전역 텍스처 ID를 설정한다.
+     */
     public void setGlobalFloorTexture(String id) {
         this.globalFloorTextureIndex = AssetRegistry.getIndex(id);
     }
 
+    /**
+     * 천장 렌더링에 사용할 전역 텍스처 ID를 설정한다.
+     */
     public void setGlobalCeilingTexture(String id) {
         this.globalCeilingTextureIndex = AssetRegistry.getIndex(id);
     }
 
+    /**
+     * 방향과 프레임을 가진 스프라이트 에셋 슬롯을 만든다.
+     * 현재 주 렌더 경로는 SpriteRenderer의 lazy-load 방식을 더 많이 사용한다.
+     */
     public void addAsset(
             String name,
             int dirCount,
@@ -113,6 +139,9 @@ public class Texture {
         heightMap.put(name, height);
     }
 
+    /**
+     * addAsset()으로 만든 슬롯의 특정 방향/프레임 픽셀 데이터를 채운다.
+     */
     public void setPixels(
             String name,
             int dir,
@@ -128,6 +157,9 @@ public class Texture {
         asset[dir][frame] = pixels;
     }
 
+    /**
+     * 방향/프레임 기반 에셋에서 정규화된 UV 좌표의 픽셀을 반환한다.
+     */
     public int getPixel(
             String name,
             int dir,
@@ -138,9 +170,11 @@ public class Texture {
         int[][][] asset = assetLibrary.get(name);
 
         if (asset == null) {
+            // 누락 에셋은 디버깅이 쉽도록 마젠타색으로 표시한다.
             return 0xFFFF00FF;
         }
 
+        // Lua/렌더러에서 범위를 벗어난 방향이나 프레임을 넘겨도 안전하게 가장 가까운 값으로 고정한다.
         dir = Math.max(
                 0,
                 Math.min(dir, asset.length - 1)
@@ -160,6 +194,7 @@ public class Texture {
         int texW = widthMap.get(name);
         int texH = heightMap.get(name);
 
+        // UV 좌표는 텍스처 영역 안으로 제한한다.
         u = Math.max(0.0, Math.min(1.0, u));
         v = Math.max(0.0, Math.min(1.0, v));
 
@@ -169,6 +204,9 @@ public class Texture {
         return pixels[x + y * texW];
     }
 
+    /**
+     * 벽 타일 ID와 정규화된 UV 좌표에 해당하는 벽 텍스처 픽셀을 반환한다.
+     */
     public int getWallPixel(
             int id,
             double u,
@@ -177,6 +215,7 @@ public class Texture {
         int[] pixels = wallTextures.get(id);
 
         if (pixels == null) {
+            // 벽 텍스처 바인딩 실패를 화면에서 즉시 볼 수 있게 한다.
             return 0xFFFF00FF;
         }
 
@@ -192,20 +231,28 @@ public class Texture {
         return pixels[x + y * texW];
     }
 
+    /**
+     * NPC 회전과 상대 각도를 8방향 스프라이트 인덱스로 변환한다.
+     */
     public int calculateDirIndex(double npcRotation, double relativeAngle) {
     
         double angle = relativeAngle - npcRotation;
 
+        // 음수 각도를 포함한 모든 각도를 0~2PI 범위로 정규화한다.
         angle = angle % (Math.PI * 2);
         if (angle < 0) {
             angle += Math.PI * 2;
         }
 
+        // 45도 단위의 8방향 인덱스로 양자화한다.
         int dirIndex = (int) Math.floor((angle + Math.PI / 8.0) / (Math.PI / 4.0));
         
         return dirIndex % 8;
     }
 
+    /**
+     * 에셋이 방향별 스프라이트를 가진 것으로 처리할지 판단한다.
+     */
     public boolean hasMultipleDirections(String assetId) {
         if (assetId.startsWith("item_") || assetId.equals("key") || assetId.equals("barrel")) {
             return false;
@@ -213,6 +260,10 @@ public class Texture {
         return true; 
     }
 
+    /**
+     * 문자열 에셋 ID로 로드된 벽 텍스처를 index 기반 임시 저장소에 등록한다.
+     * 맵 타일 숫자와의 실제 연결은 bindIntIdToStringId()가 수행한다.
+     */
     public void addWallTextureWithStringId(String stringId, int width, int height, int[] pixels) {
         int index = AssetRegistry.getIndex(stringId);
         if (index < 0) {
@@ -225,10 +276,14 @@ public class Texture {
         wallAssetHeights.put(index, height);
     }
 
+    /**
+     * 맵의 정수 타일 ID를 문자열 에셋 ID의 벽 텍스처에 연결한다.
+     */
     public void bindIntIdToStringId(int intId, String stringId) {
         int assetIndex = AssetRegistry.getIndex(stringId);
 
         if (wallAssetLibrary.containsKey(assetIndex)) {
+            // map.dat의 정수 타일값을 실제 벽 텍스처 픽셀 배열에 연결한다.
             addWallTexture(intId, wallAssetWidths.get(assetIndex), wallAssetHeights.get(assetIndex), wallAssetLibrary.get(assetIndex));
             System.out.println("[SCRIPT BIND] 맵 코드 " + intId + "번  [" + stringId + "] 텍스처 링크 완료.");
         } else {
@@ -242,6 +297,10 @@ public class Texture {
         }
     }
 
+    /**
+     * 지정 경로에서 벽 텍스처를 직접 로드해 타일 ID에 등록한다.
+     * 자동 레지스트리 경로를 우회해야 할 때 사용할 수 있는 보조 메서드다.
+     */
     public void loadWallTexture(int id, String path) {
         try {
             BufferedImage img = ImageIO.read(new File(path));
@@ -259,14 +318,23 @@ public class Texture {
         }
     }
 
+    /**
+     * 현재 전역 바닥 텍스처에서 월드 좌표 기반 반복 샘플링 픽셀을 반환한다.
+     */
     public int getFloorPixel(double u, double v) {
         return getFlatPixel(globalFloorTextureIndex, u, v);
     }
 
+    /**
+     * 현재 전역 천장 텍스처에서 월드 좌표 기반 반복 샘플링 픽셀을 반환한다.
+     */
     public int getCeilingPixel(double u, double v) {
         return getFlatPixel(globalCeilingTextureIndex, u, v);
     }
 
+    /**
+     * flat 텍스처를 반복 UV 방식으로 샘플링한다.
+     */
     private int getFlatPixel(int index, double u, double v) {
         int[] pixels = flatTextures.get(index);
         if (pixels == null) return 0xFFFF00FF; // 텍스처 없으면 핑크색
@@ -275,6 +343,7 @@ public class Texture {
         int h = flatHeights.get(index);
 
         // 0.0~1.0 범위를 텍스처 좌표로 변환
+        // floor()를 빼서 월드 좌표가 커져도 텍스처가 반복되게 만든다.
         int x = (int)((u - Math.floor(u)) * w);
         int y = (int)((v - Math.floor(v)) * h);
 

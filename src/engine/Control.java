@@ -6,6 +6,10 @@ import java.awt.event.KeyListener;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 
+/**
+ * 키보드 입력을 엔진과 Lua 스크립트가 읽을 수 있는 상태값으로 보관한다.
+ * 이벤트 기반 입력을 프레임 기반 스냅샷으로 바꾸는 역할을 한다.
+ */
 public class Control implements KeyListener {
 
     public volatile boolean up;
@@ -41,6 +45,10 @@ public class Control implements KeyListener {
 
     private transient LuaValue luaWrapper = null;
 
+    /**
+     * Lua 스크립트가 입력 상태를 읽을 수 있도록 현재 Control 객체를 userdata로 노출한다.
+     * 변환 결과는 반복 생성 비용을 줄이기 위해 캐싱한다.
+     */
     public LuaValue getLuaWrapper() {
         if (this.luaWrapper == null) {
             this.luaWrapper = CoerceJavaToLua.coerce(this);
@@ -48,6 +56,10 @@ public class Control implements KeyListener {
         return this.luaWrapper;
     }
 
+    /**
+     * AWT 키 입력 이벤트를 엔진의 실시간 입력 플래그로 변환한다.
+     * 프레임에서 안정적으로 사용할 상태 복사는 snapshot()이 담당한다.
+     */
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
@@ -67,6 +79,9 @@ public class Control implements KeyListener {
         if (key == KeyEvent.VK_U) u_key = true;
     }
 
+    /**
+     * AWT 키 해제 이벤트를 엔진의 실시간 입력 플래그에 반영한다.
+     */
     @Override
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
@@ -86,9 +101,17 @@ public class Control implements KeyListener {
         if (key == KeyEvent.VK_U) u_key = false;
     }
 
+    /**
+     * 문자 입력 콜백이다.
+     * 현재 게임 입력은 keyPressed/keyReleased의 키 코드 기반 처리만 사용한다.
+     */
     @Override
     public void keyTyped(KeyEvent e) {}
 
+    /**
+     * 비동기 키 이벤트 상태를 한 프레임 동안 고정된 s_* 상태로 복사한다.
+     * Lua와 플레이어 컨트롤러는 이 스냅샷 값을 기준으로 입력을 판정한다.
+     */
     public void snapshot() {
         s_up = up;
         s_down = down;

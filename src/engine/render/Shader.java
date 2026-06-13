@@ -1,5 +1,8 @@
 package engine.render;
 
+/**
+ * 렌더링된 픽셀에 안개, 틴트, 포스터라이즈 같은 단순 색상 후처리를 적용한다.
+ */
 public class Shader {
 
     private double fogDensity = 0.15;
@@ -7,10 +10,8 @@ public class Shader {
     private int maxVisibleDistance = 15;  
 
     /**
-     * [핵심 연산] 거리에 따른 픽셀 색상 감쇠 (임의의 안개 색상 지원 및 부드러운 전이)
-     * @param color    Texture에서 가져온 원본 색상 (0xAARRGGBB)
-     * @param distance 카메라로부터의 수직 거리 (Z-Buffer 값)
-     * @return         변조된 최종 색상
+     * 거리에 따라 픽셀 색상을 안개 색상으로 보간한다.
+     * 색상 채널 분해와 보간 계산은 이 메서드 내부에서 처리한다.
      */
     public int applyFog(int color, double distance) {
         int a = (color >> 24) & 0xFF;
@@ -41,6 +42,10 @@ public class Shader {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * 색상 채널을 지정 단계 단위로 계단화한다.
+     * 현재 기본 렌더 파이프라인에서는 보조 후처리 기능으로 남아 있다.
+     */
     public int applyPosterize(int color, int steps) {
         int a = (color >> 24) & 0xFF; 
         int r = (color >> 16) & 0xFF;
@@ -54,6 +59,10 @@ public class Shader {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * 원본 색상과 tintColor를 intensity 비율로 보간한다.
+     * 벽 방향 음영처럼 간단한 색상 변조가 필요할 때 사용한다.
+     */
     public int tint(int color, int tintColor, double intensity) {
         int a = (color >> 24) & 0xFF;
         if (a == 0) return 0x00000000;

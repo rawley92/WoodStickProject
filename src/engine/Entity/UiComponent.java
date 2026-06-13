@@ -1,5 +1,8 @@
 package engine.Entity;
 
+/**
+ * 엔티티에 고정 부착되는 UI 이미지 상태를 보관한다.
+ */
 public class UiComponent {
 
     public String uiId;
