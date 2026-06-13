@@ -9,6 +9,8 @@ local DebugHotkey = assert(loadfile("Data/Script/debug_hotkey.lua", "bt", _ENV))
 local generator = nil
 local generationDone = false
 local generationProgress = 0
+local GENERATION_STEPS_PER_SECOND = 900
+local activeLoadingToken = 0
 local enterWasDown = false 
 local isInitialized = false -- 초기화 체크 변수
 local GENERATION_STEPS_PER_SECOND = 900
@@ -78,12 +80,15 @@ end
 -- 로딩 씬을 초기화하고 animated maze generation 상태를 시작한다.
 local function prepareLoading()
     _G.GameState.currentScene = "loading"
+    _G.GameState.loadingToken = (_G.GameState.loadingToken or 0) + 1
+    activeLoadingToken = _G.GameState.loadingToken
     _G.GameState.maze = nil
     _G.GameState.start = nil
     _G.GameState.exit = nil
     _G.GameState.mazeObjects = {}
     generationDone = false
     generationProgress = 0
+    enterWasDown = false
     
     generator = MazeGenerator.new(81, 81, os.time())
     generator:startAnimatedGeneration()
@@ -152,6 +157,13 @@ end
  
 -- Loading_Controller 엔티티가 매 프레임 호출하는 진입점이다.
 function update(entity, dt, player, control) 
+    local requestedToken = _G.GameState ~= nil and (_G.GameState.loadingToken or 0) or 0
+    if _G.GameState ~= nil and _G.GameState.currentScene == "loading" and activeLoadingToken ~= requestedToken then
+        prepareLoading()
+        isInitialized = true
+        return
+    end
+
     if not isInitialized then
         prepareLoading()
         isInitialized = true

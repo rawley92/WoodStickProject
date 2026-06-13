@@ -11,7 +11,7 @@ local STATE_CHASE = 2
 local STATE_RECOVER = 3
 
 local PLAYER_SPEED = 2.5
-local MOVE_SPEED = PLAYER_SPEED * 2.0
+local MOVE_SPEED = MonsterCommon.scaleSpeed(PLAYER_SPEED * 2.0)
 local VISION_RANGE = 4.0
 local VISION_FOV = 90.0
 local PROXIMITY_RANGE = 2.0

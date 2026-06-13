@@ -4,7 +4,7 @@
 local NAME = "Weapon_Gun"
 local TEXTURE = "Textures.UI.Weapon.Gun.gun_fps"
 local SCALE = 0.28
-local AMMO_ON_PICKUP = 12
+local Weapons = dofile("Data/Script/weapons.lua")
 
 -- 첫 update에서 빈 assetId를 실제 총 아이템 외형으로 바꾼다.
 local function ensureVisual(entity)
@@ -31,7 +31,5 @@ function update(entity, dt, player, control)
     if distance >= 1.0 then return end
 
     -- 실제 전투 판정은 maze.lua의 useWeapon에서 PlayerState.weapon을 읽어 처리한다.
-    _G.PlayerState.weapon = "Gun"
-    _G.PlayerState.ammo = AMMO_ON_PICKUP
-    entity.isActive = false
+    Weapons.pickup("Gun", entity)
 end

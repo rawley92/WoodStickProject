@@ -5,6 +5,13 @@ local MonsterCommon = {}
 
 local DEFAULT_FACING_X = -1.0
 local DEFAULT_FACING_Y = 0.0
+local MONSTER_SPEED_MULTIPLIER = 0.9
+
+MonsterCommon.SPEED_MULTIPLIER = MONSTER_SPEED_MULTIPLIER
+
+function MonsterCommon.scaleSpeed(speed)
+    return speed * MONSTER_SPEED_MULTIPLIER
+end
 
 -- 몬스터 엔티티의 공통 외형과 memory 필드를 한 번만 초기화한다.
 function MonsterCommon.ensure(entity, mem, config)

@@ -14,6 +14,8 @@ public class PhysicsComponent {
     public double accX = 0;
     public double accY = 0;
 
+    public boolean noClip = false;
+
 
     public double radius = 0.3;
 

@@ -3,12 +3,11 @@
 
 local Ui = dofile("Data/Script/ui.lua")
 local PlayerDamage = dofile("Data/Script/player_damage.lua")
-local CombatEffects = dofile("Data/Script/combat_effects.lua")
+local Combat = dofile("Data/Script/combat.lua")
 local ObjectSpawn = dofile("Data/Script/object_spawn.lua")
+local DebugSpawnMenu = dofile("Data/Script/debug_spawn_menu.lua")
 local DebugHotkey = assert(loadfile("Data/Script/debug_hotkey.lua", "bt", _ENV))()
 
-local MELEE_DAMAGE = 5
-local GUN_DAMAGE = 7
 local enterWasDown = false
 local spaceWasDown = false
 local mWasDown = false
@@ -19,7 +18,9 @@ local mapZoom = 1.0
 local noticeTimer = 0
 local noticeText = nil
 local transitioned = false
-local spawned = {}
+local spawned = (_G.GameState ~= nil and _G.GameState.combatTargets) or {}
+local debugMenu = nil
+local combat = nil
 
 -- map/object 좌표는 타일 번호 기준 1-based이고, Java 물리는 타일 중심의 월드 좌표를 사용한다.
 local function centerOf(tile)
@@ -49,13 +50,18 @@ local function spawnMazeObject(object)
 
     -- 공격 대상 검색은 몬스터 ID만 별도 테이블에 보관해 빠르게 순회한다.
     if ObjectSpawn.isMonster(object.type) and id ~= nil then
-        spawned[id] = true
+        if combat ~= nil then
+            combat:trackMonster(id)
+        else
+            spawned[id] = true
+        end
     end
 end
 
 -- 미로 플레이 시작 시 플레이어 전투 상태를 초기값으로 되돌린다.
 local function resetPlayerState()
     _G.GameState.debugNoDeath = false
+    _G.GameState.noClip = false
 
     _G.PlayerState = {
         hp = 100,
@@ -76,6 +82,13 @@ local function loadMaze()
     _G.GameState.currentScene = "maze"
     resetPlayerState()
     spawned = {}
+    _G.GameState.combatTargets = spawned
+    if combat ~= nil then
+        combat:setTargets(spawned)
+    end
+    if debugMenu ~= nil then
+        debugMenu:reset()
+    end
 
     engine.initScene("Maze", "Level.maze.map")
     setupWorld()
@@ -130,7 +143,31 @@ local function setNotice(text, duration)
     noticeTimer = duration or 0.8
 end
 
+local function registerDebugSpawn(id, label, typeName)
+    if ObjectSpawn.isMonster(typeName) then
+        combat:trackMonster(id)
+    end
+end
+
+combat = Combat.new({
+    targets = spawned,
+    onNotice = function(text, duration)
+        setNotice(text, duration)
+    end,
+    startWeaponAnimation = function(weaponName)
+        Ui.startWeaponAnimation(weaponName)
+    end
+})
+
+debugMenu = DebugSpawnMenu.new({
+    onSpawned = registerDebugSpawn,
+    onNotice = function(text)
+        setNotice(text, 0.8)
+    end
+})
+
 -- 플레이어 전방의 가장 가까운 몬스터를 공격 대상으로 찾는다.
+--[[
 local function findAttackTarget(player, range)
     if player == nil then return nil, nil end
 
@@ -224,9 +261,24 @@ local function useWeapon(player)
 end
 
 -- Maze_Controller 엔티티가 매 프레임 호출하는 플레이 씬 진입점이다.
+]]
 function update(entity, dt, player, control)
-    if transitioned or _G.GameState.currentScene ~= "maze" then
+    if _G.GameState.currentScene ~= "maze" then
         return
+    end
+
+    if transitioned then
+        transitioned = false
+        spawned = (_G.GameState ~= nil and _G.GameState.combatTargets) or spawned or {}
+        if combat ~= nil then
+            combat:setTargets(spawned)
+        end
+        enterWasDown = false
+        spaceWasDown = false
+        mWasDown = false
+        menuUpWasDown = false
+        menuDownWasDown = false
+        showFullMap = false
     end
 
     PlayerDamage.tick(dt)
@@ -249,6 +301,12 @@ function update(entity, dt, player, control)
         noticeText = nil
     end
 
+    local debugMenuOpen = false
+    if debugMenu ~= nil then
+        debugMenu:update(control, player)
+        debugMenuOpen = debugMenu:isOpen()
+    end
+
     local escapePrompt = false
 
     if player ~= nil and distTo(player, _G.GameState.exit) <= 1.0 then
@@ -257,23 +315,23 @@ function update(entity, dt, player, control)
     end
 
     if control ~= nil then
-        if control.s_m_key and not mWasDown then
+        if not debugMenuOpen and control.s_m_key and not mWasDown then
             showFullMap = not showFullMap
         end
 
-        if showFullMap and control.s_menuUp and not menuUpWasDown then
+        if not debugMenuOpen and showFullMap and control.s_menuUp and not menuUpWasDown then
             mapZoom = math.min(2.0, mapZoom + 0.25)
         end
 
-        if showFullMap and control.s_menuDown and not menuDownWasDown then
+        if not debugMenuOpen and showFullMap and control.s_menuDown and not menuDownWasDown then
             mapZoom = math.max(0.75, mapZoom - 0.25)
         end
 
         if control.s_space and not spaceWasDown then
-            useWeapon(player)
+            combat:useWeapon(player)
         end
 
-        if control.s_enter and not enterWasDown and escapePrompt then
+        if not debugMenuOpen and control.s_enter and not enterWasDown and escapePrompt then
             goToEscape()
             return
         end
@@ -287,6 +345,9 @@ function update(entity, dt, player, control)
     end
 
     Ui.draw(player, showFullMap, escapePrompt, noticeText, mapZoom)
+    if debugMenu ~= nil then
+        debugMenu:draw()
+    end
 end
 
 if _G.GameState.currentScene ~= "maze" then

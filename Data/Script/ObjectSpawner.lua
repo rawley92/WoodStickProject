@@ -4,7 +4,25 @@
 local ObjectSpawner = {}
 ObjectSpawner.__index = ObjectSpawner
 ObjectSpawner.ENEMY_TYPES = { "enemy_spider", "enemy_bull", "enemy_ghost" }
-ObjectSpawner.ITEM_TYPES = { "item_health", "item_ammo" }
+ObjectSpawner.EXIT_TILE = 2
+ObjectSpawner.ITEM_TYPES = {
+    "item_health",
+    "item_health",
+    "item_health",
+    "item_health",
+    "weapon_melee",
+    "weapon_melee",
+    "weapon_melee",
+    "weapon_gun",
+    "weapon_gun",
+    "item_ammo"
+}
+
+local ITEM_SPAWN_DENSITY_MULTIPLIER = 1.2
+
+local function scaleItemCount(count)
+    return math.max(1, math.ceil(count * ITEM_SPAWN_DENSITY_MULTIPLIER))
+end
 
 -- 배치 결과와 점유 상태를 보관하는 스포너 인스턴스를 만든다.
 function ObjectSpawner.new()
@@ -44,18 +62,19 @@ function ObjectSpawner:generate(maze)
     local bullCount = math.max(4, math.floor(pathCount / 190))
     local ghostCount = math.max(3, math.floor(pathCount / 210))
 
-    local ammoCount = math.max(18, math.floor(itemPathCount / 60))
-    local healthCount = math.max(14, math.floor(itemPathCount / 78))
+    local healthCount = scaleItemCount(math.max(18, math.floor(itemPathCount / 58)))
+    local meleeCount = scaleItemCount(math.max(8, math.floor(itemPathCount / 170)))
+    local gunCount = scaleItemCount(math.max(5, math.floor(itemPathCount / 240)))
+    local ammoCount = scaleItemCount(math.max(4, math.floor(itemPathCount / 300)))
 
     self:spawnRandom("enemy_spider", spiderCount, 5)
     self:spawnRandom("enemy_bull", bullCount, 8)
     self:spawnRandom("enemy_ghost", ghostCount, 7)
 
-    self:spawnRandomItem("item_ammo", ammoCount, 2)
     self:spawnRandomItem("item_health", healthCount, 3)
-
-    self:spawnRandomItem("weapon_melee", 2, 6)
-    self:spawnRandomItem("weapon_gun", 2, 7)
+    self:spawnRandomItem("weapon_melee", meleeCount, 5)
+    self:spawnRandomItem("weapon_gun", gunCount, 6)
+    self:spawnRandomItem("item_ammo", ammoCount, 4)
 
     return self.objects
 end
@@ -178,6 +197,10 @@ function ObjectSpawner:spawnExit()
         x = bestX,
         y = bestY
     }
+
+    if self.maze.map[bestY] ~= nil then
+        self.maze.map[bestY][bestX] = self.EXIT_TILE
+    end
 end
 
 -- 후보 위치 순서를 무작위화한다.

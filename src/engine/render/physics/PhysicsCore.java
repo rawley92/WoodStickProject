@@ -56,6 +56,14 @@ public class PhysicsCore {
         double nextX = p.x + p.velX;
         double nextY = p.y + p.velY;
 
+        if (p.noClip) {
+            p.x = nextX;
+            p.y = nextY;
+            p.velX *= 0.05;
+            p.velY *= 0.05;
+            return;
+        }
+
         // X축과 Y축을 분리해서 검사하면 벽에 비스듬히 닿았을 때 한 축 이동은 유지된다.
         if (!isWall(scene, nextX, p.y)) {
             p.x = nextX;

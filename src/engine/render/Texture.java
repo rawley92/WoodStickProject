@@ -212,6 +212,10 @@ public class Texture {
             double u,
             double v) {
 
+        if (id == 2) {
+            return 0xFF1FAF5A;
+        }
+
         int[] pixels = wallTextures.get(id);
 
         if (pixels == null) {

@@ -4,6 +4,7 @@
 local NAME = "Weapon_Melee"
 local TEXTURE = "Textures.UI.Weapon.club.club"
 local SCALE = 0.28
+local Weapons = dofile("Data/Script/weapons.lua")
 
 -- 첫 update에서 빈 assetId를 실제 근접 무기 외형으로 바꾼다.
 local function ensureVisual(entity)
@@ -30,7 +31,5 @@ function update(entity, dt, player, control)
     if distance >= 1.0 then return end
 
     -- maze.lua는 이 문자열을 보고 근접 공격 범위/데미지/애니메이션을 선택한다.
-    _G.PlayerState.weapon = "Melee"
-    _G.PlayerState.ammo = 0
-    entity.isActive = false
+    Weapons.pickup("Melee", entity)
 end

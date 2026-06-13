@@ -3,27 +3,27 @@
 
 local Ui = dofile("Data/Script/ui.lua")
 local PlayerDamage = dofile("Data/Script/player_damage.lua")
-local CombatEffects = dofile("Data/Script/combat_effects.lua")
+local Combat = dofile("Data/Script/combat.lua")
 local ObjectSpawn = dofile("Data/Script/object_spawn.lua")
 
 local MAP_SIZE = 31
 local WALL = 1
 local PATH = 0
 local SPAWN_DISTANCE = 4.0
-local MELEE_DAMAGE = 5
-local GUN_DAMAGE = 7
 
 -- 메뉴 입력은 edge-trigger 방식으로 처리하기 위해 이전 프레임 상태를 보관한다.
 local enterWasDown = false
 local upWasDown = false
 local downWasDown = false
 local uWasDown = false
+local pWasDown = false
 local spaceWasDown = false
 local menuOpen = false
 local selected = 1
 local noticeText = nil
 local noticeTimer = 0
 local spawned = {}
+local combat = nil
 
 -- 디버그 메뉴에서 선택 가능한 스폰 타입 목록이다.
 local SPAWN_ENTRIES = {
@@ -31,8 +31,9 @@ local SPAWN_ENTRIES = {
     { label = "Bull", type = "enemy_bull" },
     { label = "Ghost", type = "enemy_ghost" },
     { label = "Heal Pack", type = "item_health" },
+    { label = "Melee", type = "weapon_melee" },
     { label = "Gun", type = "weapon_gun" },
-    { label = "Melee", type = "weapon_melee" }
+    { label = "Ammo", type = "item_ammo" }
 }
 
 -- 디버그 좌표 계산 결과를 테스트 방 안쪽으로 제한한다.
@@ -41,10 +42,20 @@ local function clamp(value, minValue, maxValue)
 end
 
 -- 짧은 디버그 알림 메시지를 설정한다.
-local function setNotice(text)
+local function setNotice(text, duration)
     noticeText = text
-    noticeTimer = 0.9
+    noticeTimer = duration or 0.8
 end
+
+combat = Combat.new({
+    targets = spawned,
+    onNotice = function(text, duration)
+        setNotice(text, duration)
+    end,
+    startWeaponAnimation = function(weaponName)
+        Ui.startWeaponAnimation(weaponName)
+    end
+})
 
 -- UI 미니맵 표시용 단순 사각형 테스트 맵 데이터를 만든다.
 local function buildDebugMaze()
@@ -85,6 +96,7 @@ local function resetDebugState()
     _G.GameState.currentScene = "debug_room"
     -- 테스트 중 사망으로 씬이 끝나지 않게 PlayerDamage.minHp가 참조하는 플래그를 켠다.
     _G.GameState.debugNoDeath = true
+    _G.GameState.noClip = false
     _G.GameState.maze = buildDebugMaze()
     _G.GameState.exit = nil
     _G.monster_states = {}
@@ -105,12 +117,16 @@ local function resetDebugState()
     upWasDown = false
     downWasDown = false
     uWasDown = false
+    pWasDown = false
     spaceWasDown = false
     menuOpen = false
     selected = 1
     noticeText = nil
     noticeTimer = 0
     spawned = {}
+    if combat ~= nil then
+        combat:setTargets(spawned)
+    end
 end
 
 -- 디버그 룸 update를 담당할 controller 엔티티를 생성한다.
@@ -153,13 +169,14 @@ local function spawnSelected(player)
 
     -- 몬스터만 공격 대상 추적 테이블에 등록한다.
     if ObjectSpawn.isMonster(entry.type) and id ~= nil then
-        spawned[id] = entry.label
+        combat:trackMonster(id, entry.label)
     end
 
     setNotice("Spawned " .. entry.label)
 end
 
 -- 디버그 룸에서 스폰한 몬스터 중 플레이어 전방의 공격 대상을 찾는다.
+--[[
 local function findAttackTarget(player, range)
     local bestId = nil
     local bestEntity = nil
@@ -242,6 +259,7 @@ local function attack(player)
 end
 
 -- 디버그 알림 타이머를 감소시킨다.
+]]
 local function updateNotice(dt)
     if noticeTimer > 0 then
         noticeTimer = noticeTimer - dt
@@ -258,8 +276,28 @@ local function keepPlayerAlive()
 end
 
 -- 스폰 메뉴 패널을 그린다.
+local function applyNoClip(player)
+    if player == nil or player.physics == nil then
+        return
+    end
+
+    _G.GameState = _G.GameState or {}
+    if _G.GameState.noClip == nil then
+        _G.GameState.noClip = false
+    end
+
+    player.physics.noClip = _G.GameState.noClip
+end
+
+local function toggleNoClip(player)
+    _G.GameState = _G.GameState or {}
+    _G.GameState.noClip = not (_G.GameState.noClip == true)
+    applyNoClip(player)
+    setNotice(_G.GameState.noClip and "Noclip ON" or "Noclip OFF")
+end
+
 local function drawDebugMenu()
-    engine.uiRect(872, 64, 340, 392, 0x050505, 0.86)
+    engine.uiRect(872, 64, 340, 434, 0x050505, 0.86)
     engine.uiText("DEBUG SPAWN", 900, 92, 30, 0xFFFFFF, 1.0)
 
     for i, entry in ipairs(SPAWN_ENTRIES) do
@@ -270,8 +308,12 @@ local function drawDebugMenu()
         engine.uiText(prefix .. entry.label, 904, y, 26, color, 1.0)
     end
 
-    engine.uiText("Up/Down select", 904, 408, 20, 0x888888, 1.0)
-    engine.uiText("Enter spawn", 904, 432, 20, 0x888888, 1.0)
+    local noClipText = _G.GameState ~= nil and _G.GameState.noClip and "P Noclip: ON" or "P Noclip: OFF"
+    local noClipColor = _G.GameState ~= nil and _G.GameState.noClip and 0x80FF72 or 0x888888
+
+    engine.uiText(noClipText, 904, 426, 20, noClipColor, 1.0)
+    engine.uiText("Up/Down select", 904, 450, 20, 0x888888, 1.0)
+    engine.uiText("Enter spawn", 904, 474, 20, 0x888888, 1.0)
 end
 
 -- 기본 HUD 위에 디버그 전용 안내와 스폰 메뉴를 추가로 그린다.
@@ -292,8 +334,13 @@ function update(entity, dt, player, control)
     Ui.tick(dt)
     updateNotice(dt)
     keepPlayerAlive()
+    applyNoClip(player)
 
     if control ~= nil then
+        if control.s_p_key and not pWasDown then
+            toggleNoClip(player)
+        end
+
         if control.s_u_key and not uWasDown then
             menuOpen = not menuOpen
         end
@@ -316,7 +363,7 @@ function update(entity, dt, player, control)
         end
 
         if control.s_space and not spaceWasDown then
-            attack(player)
+            combat:useWeapon(player)
         end
 
         -- 입력 반복 방지를 위해 현재 프레임 키 상태를 다음 프레임 비교용으로 저장한다.
@@ -324,6 +371,7 @@ function update(entity, dt, player, control)
         downWasDown = control.s_menuDown
         enterWasDown = control.s_enter
         uWasDown = control.s_u_key
+        pWasDown = control.s_p_key
         spaceWasDown = control.s_space
     end
 

@@ -42,6 +42,14 @@ public class PhysicsCore {
         double nextX = p.x + p.velX;
         double nextY = p.y + p.velY;
 
+        if (p.noClip) {
+            p.x = nextX;
+            p.y = nextY;
+            p.velX *= 0.05;
+            p.velY *= 0.05;
+            return;
+        }
+
         if (!isWall(scene, nextX, p.y)) {
             p.x = nextX;
         } else {
